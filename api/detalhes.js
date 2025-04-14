@@ -49,9 +49,9 @@ export async function GET(request) {
       throw new Error("Campeão não encontrado");
     }
 
-    // 3. Obter partidas recentes (máximo 20)
+    // 3. Obter partidas recentes (máximo 30)
     const matchesRes = await fetch(
-      `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?count=20`,
+      `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?count=30`,
       { headers: { "X-Riot-Token": process.env.RIOT_API_KEY } }
     );
     

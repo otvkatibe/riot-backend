@@ -58,7 +58,7 @@ export async function GET(request) {
       });
     } else if (tipo === "winrate") {
       const matchIdsRes = await fetch(
-        `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&start=0&count=20`,
+        `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&start=0&count=30`,
         { headers: { "X-Riot-Token": process.env.RIOT_API_KEY } }
       );
       const matchIds = await matchIdsRes.json();
