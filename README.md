@@ -1,2 +1,2 @@
-# riot-backend
-riot backend w/
+# riot-auth-backend
+riot-backend w/ mongodb.
