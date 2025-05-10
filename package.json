@@ -20,7 +20,7 @@
     "start": "nodemon api/index.js",
     "startdatabase": "docker-compose up -d",
     "stopdatabase": "docker-compose down",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "generate-secret-key": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
   "author": "",
   "license": "ISC"
