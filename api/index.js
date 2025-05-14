@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import riotRoutes from './routes/riot.route.js';
 import userRoutes from './routes/user.route.js';
+import favoriteRiotRoutes from './routes/favoriteRiot.route.js';
 import db from './database/configdb.js';
 
 dotenv.config();
@@ -19,6 +20,7 @@ app.use(cors({
 
 app.use("/user", userRoutes);
 app.use("/riot", riotRoutes);
+app.use('/riot/favorites', favoriteRiotRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

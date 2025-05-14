@@ -9,4 +9,6 @@ router.get('/champion-stats', validateNomeTagChampion, getChampionStats);
 router.get('/profile', validatePuuid, getProfile);
 router.get('/puuid', validateNomeTag, getPuuid);
 
+
+
 export default router;
