@@ -17,7 +17,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "nodemon api/index.js",
+    "start": "nodemon src/index.js",
     "startdatabase": "docker-compose up -d",
     "stopdatabase": "docker-compose down",
     "generate-secret-key": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""

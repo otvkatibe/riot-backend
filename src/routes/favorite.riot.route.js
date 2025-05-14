@@ -1,6 +1,6 @@
 import express from 'express';
 import verifyToken from '../middlewares/jwt.token.middleware.js';
-import * as favoriteController from '../controller/favoriteRiot.controller.js';
+import * as favoriteController from '../controller/favorite.controller.js';
 
 const router = express.Router();
 router.use(verifyToken);
