@@ -1,62 +1,5 @@
 import * as riotService from '../services/riot.service.js';
 
-export const getMaestriaOuWinrate = async (req, res) => {
-  try {
-    const { nome, tag, tipo } = req.query;
-    if (!nome || !tag || !tipo) {
-      return res.status(400).json({ message: 'Nome, tag e tipo são obrigatórios.' });
-    }
-
-    const account = await riotService.getAccountByRiotId(nome, tag);
-    const puuid = account.puuid;
-
-    if (tipo === "maestria") {
-      const [masteryData, championsData] = await Promise.all([
-        riotService.getChampionMastery(puuid),
-        riotService.getChampionsData()
-      ]);
-      const champions = championsData.data;
-      const top10 = masteryData.slice(0, 10).map((m, i) => {
-        const champ = Object.values(champions).find((c) => parseInt(c.key) === m.championId);
-        return {
-          posicao: i + 1,
-          nome: champ?.name || `Campeão ${m.championId}`,
-          championIcon: champ ? champ.id : m.championId,
-          championPoints: m.championPoints,
-        };
-      });
-      console.log("Top 10 maestria:", top10);
-      return res.status(200).json({ tipo: "maestria", dados: top10 });
-    }
-
-    if (tipo === "winrate") {
-      const matchIds = await riotService.getMatchIds(puuid, 420, 30);
-      let vitorias = 0, total = 0;
-      const results = await Promise.allSettled(
-        matchIds.map((id) => riotService.getMatchById(id))
-      );
-      for (const r of results) {
-        if (r.status === "fulfilled") {
-          const match = r.value;
-          const participant = match.info.participants.find((p) => p.puuid === puuid);
-          if (participant) {
-            total++;
-            if (participant.win) vitorias++;
-          }
-        }
-      }
-      const winrate = total > 0 ? ((vitorias / total) * 100).toFixed(2) : "0.00";
-      console.log("Winrate:", winrate);
-      return res.status(200).json({ tipo: "winrate", dados: `${winrate}% (${vitorias}V/${total - vitorias}D)` });
-    }
-
-    return res.status(400).json({ message: "Tipo inválido." });
-  } catch (error) {
-    console.log('Erro ao buscar maestria ou winrate:', error.message);
-    return res.status(500).json({ message: "Erro ao buscar dados." });
-  }
-};
-
 export const getChampionStats = async (req, res) => {
   try {
     const { nome, tag, champion } = req.query;
@@ -186,5 +129,65 @@ export const getPuuid = async (req, res) => {
   } catch (error) {
     console.log('Erro ao buscar PUUID:', error.message);
     return res.status(500).json({ message: "Erro ao buscar PUUID." });
+  }
+};
+
+export const getMaestria = async (req, res) => {
+  try {
+    const { nome, tag } = req.query;
+    if (!nome || !tag) {
+      return res.status(400).json({ message: 'Nome e tag são obrigatórios.' });
+    }
+    const account = await riotService.getAccountByRiotId(nome, tag);
+    const puuid = account.puuid;
+    const [masteryData, championsData] = await Promise.all([
+      riotService.getChampionMastery(puuid),
+      riotService.getChampionsData()
+    ]);
+    const champions = championsData.data;
+    const top10 = masteryData.slice(0, 10).map((m, i) => {
+      const champ = Object.values(champions).find((c) => parseInt(c.key) === m.championId);
+      return {
+        posicao: i + 1,
+        nome: champ?.name || `Campeão ${m.championId}`,
+        championIcon: champ ? champ.id : m.championId,
+        championPoints: m.championPoints,
+      };
+    });
+    return res.status(200).json({ dados: top10 });
+  } catch (error) {
+    console.log('Erro ao buscar maestria:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar dados de maestria." });
+  }
+};
+
+export const getWinrate = async (req, res) => {
+  try {
+    const { nome, tag } = req.query;
+    if (!nome || !tag) {
+      return res.status(400).json({ message: 'Nome e tag são obrigatórios.' });
+    }
+    const account = await riotService.getAccountByRiotId(nome, tag);
+    const puuid = account.puuid;
+    const matchIds = await riotService.getMatchIds(puuid, 420, 30);
+    let vitorias = 0, total = 0;
+    const results = await Promise.allSettled(
+      matchIds.map((id) => riotService.getMatchById(id))
+    );
+    for (const r of results) {
+      if (r.status === "fulfilled") {
+        const match = r.value;
+        const participant = match.info.participants.find((p) => p.puuid === puuid);
+        if (participant) {
+          total++;
+          if (participant.win) vitorias++;
+        }
+      }
+    }
+    const winrate = total > 0 ? ((vitorias / total) * 100).toFixed(2) : "0.00";
+    return res.status(200).json({ winrate: `${winrate}%`, vitorias, derrotas: total - vitorias, total });
+  } catch (error) {
+    console.log('Erro ao buscar winrate:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar winrate." });
   }
 };
