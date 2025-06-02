@@ -6,6 +6,7 @@ export const createFavorite = async (req, res) => {
     res.status(201).json(favorite);
   } catch (err) {
     res.status(500).json({ message: 'Erro ao criar favorito.' });
+    console.log(err);
   }
 };
 
