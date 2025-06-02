@@ -3,19 +3,27 @@ import FavoriteRiot from '../models/FavoriteRiot.js';
 
 export const createFavorite = async (req, res) => {
   try {
-    // Verifica duplicidade antes de criar
+    // Normaliza os campos para minúsculas
+    const nome = req.body.nome.toLowerCase();
+    const tag = req.body.tag.toLowerCase();
+
+    // Verifica duplicidade
     const exists = await FavoriteRiot.findOne({
-      nome: req.body.nome,
-      tag: req.body.tag,
+      nome,
+      tag,
       tipo: req.body.tipo,
       userId: req.userId
     });
+
     if (exists) {
       return res.status(409).json({ message: 'Este jogador já está nos seus favoritos!' });
     }
-    const favorite = await favoriteservice.createFavorite({ ...req.body, userId: req.userId });
+
+    // Cria o favorito
+    const favorite = await FavoriteRiot.create({ ...req.body, nome, tag, userId: req.userId });
     res.status(201).json(favorite);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Erro ao criar favorito.' });
   }
 };
