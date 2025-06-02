@@ -1,12 +1,22 @@
 import * as favoriteservice from '../services/favorite.riot..service.js';
+import FavoriteRiot from '../models/FavoriteRiot.js';
 
 export const createFavorite = async (req, res) => {
   try {
+    // Verifica duplicidade antes de criar
+    const exists = await FavoriteRiot.findOne({
+      nome: req.body.nome,
+      tag: req.body.tag,
+      tipo: req.body.tipo,
+      userId: req.userId
+    });
+    if (exists) {
+      return res.status(409).json({ message: 'Este jogador já está nos seus favoritos!' });
+    }
     const favorite = await favoriteservice.createFavorite({ ...req.body, userId: req.userId });
     res.status(201).json(favorite);
   } catch (err) {
     res.status(500).json({ message: 'Erro ao criar favorito.' });
-    console.log(err);
   }
 };
 
