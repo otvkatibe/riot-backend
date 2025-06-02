@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import * as favoriteservice from '../services/favorite.riot.service.js';
-=======
-import * as favoriteservice from '../services/favorite.riot..service.js';
 import FavoriteRiot from '../models/FavoriteRiot.js';
->>>>>>> 28e9fa80bbc7a6e026bccd0634c542fb29c1a106
 
 export const createFavorite = async (req, res) => {
   try {
