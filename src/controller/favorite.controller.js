@@ -1,4 +1,4 @@
-import * as favoriteservice from '../services/favorite.riot..service.js';
+import * as favoriteservice from '../services/favorite.riot.service.js';
 
 export const createFavorite = async (req, res) => {
   try {
