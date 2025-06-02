@@ -28,6 +28,12 @@ const FavoriteRiotSchema = new mongoose.Schema({
   timestamps: true
 });
 
+FavoriteRiotSchema.pre('save', function (next) {
+  if (this.nome) this.nome = this.nome.toLowerCase();
+  if (this.tag) this.tag = this.tag.toLowerCase();
+  next();
+});
+
 const FavoriteRiot = mongoose.model('FavoriteRiot', FavoriteRiotSchema);
 
 export default FavoriteRiot;

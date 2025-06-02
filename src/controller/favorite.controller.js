@@ -1,12 +1,34 @@
+<<<<<<< HEAD
 import * as favoriteservice from '../services/favorite.riot.service.js';
+=======
+import * as favoriteservice from '../services/favorite.riot..service.js';
+import FavoriteRiot from '../models/FavoriteRiot.js';
+>>>>>>> 28e9fa80bbc7a6e026bccd0634c542fb29c1a106
 
 export const createFavorite = async (req, res) => {
   try {
-    const favorite = await favoriteservice.createFavorite({ ...req.body, userId: req.userId });
+    // Normaliza os campos para minúsculas
+    const nome = req.body.nome.toLowerCase();
+    const tag = req.body.tag.toLowerCase();
+
+    // Verifica duplicidade
+    const exists = await FavoriteRiot.findOne({
+      nome,
+      tag,
+      tipo: req.body.tipo,
+      userId: req.userId
+    });
+
+    if (exists) {
+      return res.status(409).json({ message: 'Este jogador já está nos seus favoritos!' });
+    }
+
+    // Cria o favorito
+    const favorite = await FavoriteRiot.create({ ...req.body, nome, tag, userId: req.userId });
     res.status(201).json(favorite);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Erro ao criar favorito.' });
-    console.log(err);
   }
 };
 
