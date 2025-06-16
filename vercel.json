@@ -11,7 +11,7 @@
       "src": "/(.*)",
       "headers": {
         "Access-Control-Allow-Origin": "https://glorious-enigma-wr5pwjr6jr4vh54j6-5173.app.github.dev",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Methods": "GET,HEAD,POST,PUT,DELETE,OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type,Authorization",
         "Access-Control-Allow-Credentials": "true"
       },
