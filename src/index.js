@@ -12,11 +12,13 @@ const app = express();
 
 db.connect();
 
-app.use(express.json());
 app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  origin: (origin, callback) => {
+    callback(null, origin || true);
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }));
 
 app.use("/user", userRoutes);
