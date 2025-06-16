@@ -1,15 +1,22 @@
 {
- "version": 2,
- "builds": [
-  {
-   "src": "src/index.js",
-   "use": "@vercel/node"
-  }
- ],
- "routes": [
-  {
-   "src": "/(.*)",
-   "dest": "src/index.js"
-  }
- ]
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://glorious-enigma-wr5pwjr6jr4vh54j6-5173.app.github.dev",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Credentials": "true"
+      },
+      "dest": "src/index.js",
+      "continue": true
+    }
+  ]
 }
