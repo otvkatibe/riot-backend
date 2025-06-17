@@ -1,5 +1,6 @@
 import express from 'express';
-import { registerUser, loginUser } from '../controller/user.controller.js';
+import { registerUser, loginUser, getMe } from '../controller/user.controller.js';
+import verifyToken from '../middlewares/jwt.token.middleware.js';
 
 const router = express.Router();
 
@@ -95,6 +96,43 @@ const router = express.Router();
  *       500:
  *         description: Erro interno do servidor
  */
+
+/**
+ * @swagger
+ * /user/me:
+ *   get:
+ *     summary: Retorna os dados do usuário autenticado
+ *     tags: [Usuário]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dados do usuário recuperados com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *       401:
+ *         description: Token não fornecido ou inválido
+ *       404:
+ *         description: Usuário não encontrado
+ *       500:
+ *         description: Erro interno do servidor
+ */
+router.get('/me', verifyToken, getMe);
+
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 
