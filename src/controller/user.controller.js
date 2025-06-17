@@ -1,4 +1,4 @@
-import { createUser, findUserByEmail } from '../services/user.service.js';
+import { createUser, findUserByEmail, findUserById } from '../services/user.service.js';
 import { validateEmail, validatePassword } from '../utils/validation.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import bcrypt from 'bcrypt';
@@ -14,9 +14,9 @@ export const registerUser = async (req, res) => {
     if (existingUser) return errorResponse(res, 400, 'Usuário já registrado.');
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await createUser({ name, email, password: hashedPassword });
+    await createUser({ name, email, password: hashedPassword });
 
-    return successResponse(res, 201, 'Usuário registrado com sucesso.', { user });
+    return successResponse(res, 201, 'Usuário registrado com sucesso.');
   } catch (error) {
     console.log(error.message);
     return errorResponse(res, 500, 'Erro ao registrar usuário.');
@@ -40,5 +40,31 @@ export const loginUser = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     return errorResponse(res, 500, 'Erro ao realizar login.');
+  }
+};
+
+export const getMe = async (req, res) => {
+  try {
+    const userId = req.userId; // Adicionado pelo middleware verifyToken
+    if (!userId) {
+      return errorResponse(res, 400, 'ID do usuário não encontrado no token.');
+    }
+
+    const user = await findUserById(userId);
+    if (!user) {
+      return errorResponse(res, 404, 'Usuário não encontrado.');
+    }
+
+    // Retorna o usuário sem a senha (o select: false no model já cuida disso)
+    return successResponse(res, 200, 'Dados do usuário recuperados com sucesso.', { 
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      } 
+    });
+  } catch (error) {
+    console.log(error.message);
+    return errorResponse(res, 500, 'Erro ao buscar dados do usuário.');
   }
 };
