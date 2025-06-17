@@ -18,6 +18,7 @@ export const registerUser = async (req, res) => {
 
     return successResponse(res, 201, 'Usuário registrado com sucesso.', { user });
   } catch (error) {
+    console.log(error.message);
     return errorResponse(res, 500, 'Erro ao registrar usuário.');
   }
 };
@@ -37,6 +38,7 @@ export const loginUser = async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
     return successResponse(res, 200, 'Login realizado com sucesso.', { token });
   } catch (error) {
+    console.log(error.message);
     return errorResponse(res, 500, 'Erro ao realizar login.');
   }
 };
