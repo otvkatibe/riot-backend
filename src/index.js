@@ -21,6 +21,8 @@ app.use(cors({
   credentials: true
 }));
 
+app.use(express.json());
+
 app.use("/user", userRoutes);
 app.use("/riot", riotRoutes);
 app.use('/riot/favorites', favoriteriotRoutes);
