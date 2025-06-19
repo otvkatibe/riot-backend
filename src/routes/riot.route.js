@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid } from '../controller/riot.controller.js';
+import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop10 } from '../controller/riot.controller.js';
 import { validateNomeTagChampion, validatePuuid, validateNomeTag } from '../middlewares/riot.validation.js';
 
 const router = express.Router();
@@ -118,5 +118,40 @@ router.get('/profile', validatePuuid, getProfile);
  *         description: PUUID do jogador
  */
 router.get('/puuid', validateNomeTag, getPuuid);
+
+/**
+ * @swagger
+ * /riot/challenger-top10:
+ *   get:
+ *     summary: Retorna o top 10 de jogadores do elo Desafiante
+ *     tags: [Riot]
+ *     responses:
+ *       200:
+ *         description: Lista do top 10 de jogadores Desafiantes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   position:
+ *                     type: number
+ *                   name:
+ *                     type: string
+ *                   tag:
+ *                     type: string
+ *                   leaguePoints:
+ *                     type: number
+ *                   wins:
+ *                     type: number
+ *                   losses:
+ *                     type: number
+ *                   puuid:
+ *                     type: string
+ *       500:
+ *         description: Erro interno do servidor
+ */
+router.get('/challenger-top10', getChallengerTop10);
 
 export default router;
