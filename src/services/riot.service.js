@@ -16,40 +16,31 @@ export const getAccountByRiotId = async (nome, tag) => {
   }
 };
 
-export const getSummonerByName = async (summonerName) => {
-  try {
-    const res = await fetch(
-      `https://br1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${encodeURIComponent(summonerName)}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) throw new Error("Invocador não encontrado pelo nome");
-    return await res.json();
-  } catch (error) {
-    console.log('Erro ao buscar invocador por nome:', error);
-    throw new Error('Erro ao buscar invocador por nome.');
-  }
-};
-
-export const getAccountByPuuid = async (puuid) => {
-  try {
-    const res = await fetch(
-      `https://americas.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) throw new Error("Conta não encontrada pelo PUUID");
-    return await res.json();
-  } catch (error) {
-    console.log('Erro ao buscar conta por PUUID:', error);
-    throw new Error('Erro ao buscar conta por PUUID.');
-  }
-};
-
 export const getChallengerLeague = async (queue) => {
   try {
     const res = await fetch(
       `https://br1.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/${queue}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
+    if (!res.ok) {
+      console.error(`Riot API respondeu com status ${res.status}:`, await res.text());
+      throw new Error("Erro ao buscar liga Challenger");
+    }
+    const data = await res.json();
+
+    // Ordena os jogadores por pontos de liga (PDL) em ordem decrescente
+    const sortedPlayers = data.entries.sort((a, b) => b.leaguePoints - a.leaguePoints);
+    
+    // Pega os 10 primeiros e mapeia para o formato necessário
+    return sortedPlayers.slice(0, 10).map((player, index) => ({
+      position: index + 1,
+      name: player.summonerName,
+      tag: '', // A tag não está disponível neste endpoint
+      leaguePoints: player.leaguePoints,
+      wins: player.wins,
+      losses: player.losses,
+      puuid: '', // O puuid não está disponível neste endpoint
+    }));
     if (!res.ok) {
       console.error(`Riot API respondeu com status ${res.status}:`, await res.text());
       throw new Error("Erro ao buscar liga Challenger");
