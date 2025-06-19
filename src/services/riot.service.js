@@ -26,25 +26,6 @@ export const getChallengerLeague = async (queue) => {
       console.error(`Riot API respondeu com status ${res.status}:`, await res.text());
       throw new Error("Erro ao buscar liga Challenger");
     }
-    const data = await res.json();
-
-    // Ordena os jogadores por pontos de liga (PDL) em ordem decrescente
-    const sortedPlayers = data.entries.sort((a, b) => b.leaguePoints - a.leaguePoints);
-    
-    // Pega os 10 primeiros e mapeia para o formato necessário
-    return sortedPlayers.slice(0, 10).map((player, index) => ({
-      position: index + 1,
-      name: player.summonerName,
-      tag: '', // A tag não está disponível neste endpoint
-      leaguePoints: player.leaguePoints,
-      wins: player.wins,
-      losses: player.losses,
-      puuid: '', // O puuid não está disponível neste endpoint
-    }));
-    if (!res.ok) {
-      console.error(`Riot API respondeu com status ${res.status}:`, await res.text());
-      throw new Error("Erro ao buscar liga Challenger");
-    }
     return await res.json();
   } catch (error) {
     console.log('Erro ao buscar liga Challenger:', error);
