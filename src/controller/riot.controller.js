@@ -230,15 +230,15 @@ export const getWinrate = async (req, res) => {
   }
 };
 
-export const getChallengerTop10 = async (req, res) => {
+export const getChallengerTop5 = async (req, res) => {
   try {
     const queue = 'RANKED_SOLO_5x5';
-    // A função de serviço agora faz todo o trabalho de buscar, ordenar e formatar
-    const top10Players = await riotService.getChallengerLeague(queue);
+    // A função de serviço agora busca, ordena e formata o top 5
+    const top5Players = await riotService.getChallengerLeague(queue);
 
-    return res.status(200).json(top10Players);
+    return res.status(200).json(top5Players);
   } catch (error) {
-    console.error('Erro ao buscar top 10 Challenger:', error.message);
-    return res.status(500).json({ message: "Erro ao buscar o top 10 Challenger." });
+    console.error('Erro ao buscar top 5 Challenger:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar o top 5 Challenger." });
   }
 };
