@@ -230,7 +230,7 @@ export const getWinrate = async (req, res) => {
   }
 };
 
-export const getChallengerTop10 = async (req, res) => {
+export const getChallengerTop5 = async (req, res) => {
   try {
     const queue = 'RANKED_SOLO_5x5';
     const challengerLeague = await riotService.getChallengerLeague(queue);

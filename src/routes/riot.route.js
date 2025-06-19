@@ -152,6 +152,6 @@ router.get('/puuid', validateNomeTag, getPuuid);
  *       500:
  *         description: Erro interno do servidor
  */
-router.get('/challenger-top10', getChallengerTop10);
+router.get('/challenger-top5', getChallengerTop5);
 
 export default router;
