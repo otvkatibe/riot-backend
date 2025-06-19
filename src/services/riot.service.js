@@ -50,7 +50,10 @@ export const getChallengerLeague = async (queue) => {
       `https://br1.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/${queue}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
-    if (!res.ok) throw new Error("Erro ao buscar liga Challenger");
+    if (!res.ok) {
+      console.error(`Riot API respondeu com status ${res.status}:`, await res.text());
+      throw new Error("Erro ao buscar liga Challenger");
+    }
     return await res.json();
   } catch (error) {
     console.log('Erro ao buscar liga Challenger:', error);

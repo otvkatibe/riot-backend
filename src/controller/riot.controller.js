@@ -235,18 +235,19 @@ export const getChallengerTop10 = async (req, res) => {
     const queue = 'RANKED_SOLO_5x5';
     const challengerLeague = await riotService.getChallengerLeague(queue);
 
-    // A API já retorna os jogadores ordenados por LP
-    const top10Players = challengerLeague.entries.slice(0, 10);
+    // Ordena por LP e pega os 5 primeiros
+    const top5Players = challengerLeague.entries
+      .sort((a, b) => b.leaguePoints - a.leaguePoints)
+      .slice(0, 5);
 
-    // Para cada jogador, precisamos buscar o PUUID e depois a tag.
-    // Usamos Promise.allSettled para não falhar a requisição inteira se um jogador não for encontrado.
-    const promises = top10Players.map(async (player, index) => {
+    // Para cada jogador, busca os detalhes (puuid e tag) em paralelo
+    const promises = top5Players.map(async (player, index) => {
       const summoner = await riotService.getSummonerByName(player.summonerName);
       const account = await riotService.getAccountByPuuid(summoner.puuid);
       
       return {
         position: index + 1,
-        name: account.gameName,
+        name: account.gameName || player.summonerName, // Usa o nome da conta, com fallback
         tag: account.tagLine,
         leaguePoints: player.leaguePoints,
         wins: player.wins,
@@ -263,7 +264,7 @@ export const getChallengerTop10 = async (req, res) => {
 
     return res.status(200).json(enrichedPlayers);
   } catch (error) {
-    console.error('Erro ao buscar top 10 Challenger:', error.message);
-    return res.status(500).json({ message: "Erro ao buscar o top 10 Challenger." });
+    console.error('Erro ao buscar top 5 Challenger:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar o top 5 Challenger." });
   }
 };
