@@ -262,7 +262,7 @@ export const getChallengerTop5 = async (req, res) => {
       .filter(result => result.status === 'fulfilled')
       .map(result => result.value);
 
-    return res.status(200).json(top10Players);
+    return res.status(200).json(enrichedPlayers);
   } catch (error) {
     console.error('Erro ao buscar top 5 Challenger:', error.message);
     return res.status(500).json({ message: "Erro ao buscar o top 5 Challenger." });
