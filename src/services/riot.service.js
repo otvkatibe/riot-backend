@@ -16,6 +16,48 @@ export const getAccountByRiotId = async (nome, tag) => {
   }
 };
 
+export const getSummonerByName = async (summonerName) => {
+  try {
+    const res = await fetch(
+      `https://br1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${encodeURIComponent(summonerName)}`,
+      { headers: { "X-Riot-Token": RIOT_API_KEY } }
+    );
+    if (!res.ok) throw new Error("Invocador não encontrado pelo nome");
+    return await res.json();
+  } catch (error) {
+    console.log('Erro ao buscar invocador por nome:', error);
+    throw new Error('Erro ao buscar invocador por nome.');
+  }
+};
+
+export const getAccountByPuuid = async (puuid) => {
+  try {
+    const res = await fetch(
+      `https://americas.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
+      { headers: { "X-Riot-Token": RIOT_API_KEY } }
+    );
+    if (!res.ok) throw new Error("Conta não encontrada pelo PUUID");
+    return await res.json();
+  } catch (error) {
+    console.log('Erro ao buscar conta por PUUID:', error);
+    throw new Error('Erro ao buscar conta por PUUID.');
+  }
+};
+
+export const getChallengerLeague = async (queue) => {
+  try {
+    const res = await fetch(
+      `https://br1.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/${queue}`,
+      { headers: { "X-Riot-Token": RIOT_API_KEY } }
+    );
+    if (!res.ok) throw new Error("Erro ao buscar liga Challenger");
+    return await res.json();
+  } catch (error) {
+    console.log('Erro ao buscar liga Challenger:', error);
+    throw new Error('Erro ao buscar liga Challenger.');
+  }
+};
+
 export const getChampionMastery = async (puuid) => {
   try {
     const res = await fetch(

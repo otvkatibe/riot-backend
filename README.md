@@ -161,6 +161,10 @@ Taxa de vitórias do jogador.
 Estatísticas com um campeão específico.
 - Parâmetros: `nome`, `tag`, `champion`
 
+#### GET `/riot/challenger-top10`
+Busca o top 10 de jogadores do elo Desafiante (Solo/Duo).
+- Parâmetros: Nenhum
+
 ### ⭐ Favoritos (Requer autenticação)
 
 #### POST `/riot/favorites`

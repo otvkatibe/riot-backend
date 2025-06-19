@@ -27,6 +27,40 @@ const processRankedData = (rankedData) => {
   }, { soloDuo: null, flex: null });
 };
 
+// Função auxiliar para corrigir a lane/role em partidas de desistência (remake)
+const getLaneAndRole = (participant) => {
+  // Prioriza o campo teamPosition, que é mais moderno e confiável
+  if (participant.teamPosition) {
+    switch (participant.teamPosition) {
+      case 'TOP':
+        return { lane: 'Top', role: 'Solo' };
+      case 'JUNGLE':
+        return { lane: 'Jungle', role: 'Jungle' };
+      case 'MIDDLE':
+        return { lane: 'Mid', role: 'Solo' };
+      case 'BOTTOM':
+        return { lane: 'Bottom', role: 'Carry' };
+      case 'UTILITY':
+        return { lane: 'Bottom', role: 'Support' };
+      default:
+        break; // Continua para o fallback se o valor for inesperado
+    }
+  }
+
+  // Fallback para dados mais antigos ou se teamPosition não existir.
+  // Trata o caso específico do bug de "NONE".
+  if (participant.lane === 'NONE') {
+    return { lane: 'Partida de desistência', role: '' };
+  }
+
+  // Fallback padrão para os dados originais, com capitalização para consistência
+  const capitalize = (s) => (s && typeof s === 'string' ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '');
+  return {
+    lane: capitalize(participant.lane),
+    role: capitalize(participant.role),
+  };
+};
+
 export const getChampionStats = async (req, res) => {
   try {
     const { nome, tag, champion } = req.query;
@@ -74,6 +108,9 @@ export const getChampionStats = async (req, res) => {
           stats.totalAssists += participant.assists;
           stats.totalCS += participant.totalMinionsKilled + (participant.neutralMinionsKilled || 0);
           stats.totalGameDuration += match.info.gameDuration;
+          
+          const { lane, role } = getLaneAndRole(participant);
+
           stats.matches.push({
             win: participant.win,
             kills: participant.kills,
@@ -82,8 +119,8 @@ export const getChampionStats = async (req, res) => {
             totalCS: participant.totalMinionsKilled + (participant.neutralMinionsKilled || 0),
             gameDuration: match.info.gameDuration,
             championId: participant.championId,
-            lane: participant.lane,
-            role: participant.role,
+            lane: lane,
+            role: role,
             championName: participant.championName
           });
         }
@@ -190,5 +227,43 @@ export const getWinrate = async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar winrate:', error.message);
     return res.status(500).json({ message: "Erro ao buscar winrate." });
+  }
+};
+
+export const getChallengerTop10 = async (req, res) => {
+  try {
+    const queue = 'RANKED_SOLO_5x5';
+    const challengerLeague = await riotService.getChallengerLeague(queue);
+
+    // A API já retorna os jogadores ordenados por LP
+    const top10Players = challengerLeague.entries.slice(0, 10);
+
+    // Para cada jogador, precisamos buscar o PUUID e depois a tag.
+    // Usamos Promise.allSettled para não falhar a requisição inteira se um jogador não for encontrado.
+    const promises = top10Players.map(async (player, index) => {
+      const summoner = await riotService.getSummonerByName(player.summonerName);
+      const account = await riotService.getAccountByPuuid(summoner.puuid);
+      
+      return {
+        position: index + 1,
+        name: account.gameName,
+        tag: account.tagLine,
+        leaguePoints: player.leaguePoints,
+        wins: player.wins,
+        losses: player.losses,
+        puuid: summoner.puuid,
+      };
+    });
+
+    const results = await Promise.allSettled(promises);
+
+    const enrichedPlayers = results
+      .filter(result => result.status === 'fulfilled')
+      .map(result => result.value);
+
+    return res.status(200).json(enrichedPlayers);
+  } catch (error) {
+    console.error('Erro ao buscar top 10 Challenger:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar o top 10 Challenger." });
   }
 };
