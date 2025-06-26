@@ -79,17 +79,24 @@ export const getChallengerLeague = async (queue) => {
     // Busca os detalhes de cada jogador do top 5
     const detailedPlayers = await Promise.all(
       top5Players.map(async (player, index) => {
-        const profile = await getSummonerBySummonerId(player.summonerId);
-        const account = profile ? await getAccountByPuuid(profile.puuid) : null;
+        let profile = null;
+        let account = null;
+        try {
+          profile = await getSummonerBySummonerId(player.summonerId);
+          account = profile ? await getAccountByPuuid(profile.puuid) : null;
+        } catch (e) {
+          // Se der erro, ignora e usa os dados do player
+        }
 
         return {
           position: index + 1,
-          name: account ? account.gameName : player.summonerName,
-          tag: account ? account.tagLine : '????',
+          // Sempre retorna o nome do player, mesmo se falhar a busca do perfil
+          name: account?.gameName || player.summonerName,
+          tag: account?.tagLine || '????',
           leaguePoints: player.leaguePoints,
           wins: player.wins,
           losses: player.losses,
-          puuid: profile ? profile.puuid : '',
+          puuid: profile?.puuid || '',
         };
       })
     );
