@@ -60,7 +60,7 @@ const getAccountByPuuid = async (puuid) => {
   }
 };
 
-export const getChallengerTop3 = async (queue) => {
+export const getChallenger = async (queue) => {
   try {
     const res = await fetch(
       `https://br1.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/${queue}`,

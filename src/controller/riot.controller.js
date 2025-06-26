@@ -234,7 +234,7 @@ export const getChallengerTop3 = async (req, res) => {
   try {
     const queue = 'RANKED_SOLO_5x5';
     // A função de serviço agora busca, ordena e formata o top 3
-    const top3Players = await riotService.getChallengerTop3(queue);
+    const top3Players = await riotService.getChallenger(queue);
 
     return res.status(200).json(top3Players);
   } catch (error) {
