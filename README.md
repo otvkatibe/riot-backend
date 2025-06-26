@@ -26,6 +26,8 @@ Este projeto foi desenvolvido como trabalho da disciplina **Desenvolvimento Full
 - Estatísticas de winrate
 - Perfil completo do jogador (rank, nível, ícone)
 - Estatísticas específicas por campeão
+- Busca do top 3 de jogadores do elo Desafiante
+- Histórico de partidas recentes
 
 ### ⭐ Sistema de Favoritos
 - Adicionar jogadores aos favoritos
@@ -161,8 +163,12 @@ Taxa de vitórias do jogador.
 Estatísticas com um campeão específico.
 - Parâmetros: `nome`, `tag`, `champion`
 
-#### GET `/riot/challenger-top10`
-Busca o top 10 de jogadores do elo Desafiante (Solo/Duo).
+#### GET `/riot/history`
+Busca o histórico de partidas recentes de um jogador.
+- Parâmetros: `nome`, `tag`
+
+#### GET `/riot/challenger-top3`
+Busca o top 3 de jogadores do elo Desafiante (Solo/Duo).
 - Parâmetros: Nenhum
 
 ### ⭐ Favoritos (Requer autenticação)
