@@ -242,3 +242,47 @@ export const getChallengerTop5 = async (req, res) => {
     return res.status(500).json({ message: "Erro ao buscar o top 5 Challenger." });
   }
 };
+
+export const getHistory = async (req, res) => {
+  try {
+    const { nome, tag } = req.query;
+    const account = await riotService.getAccountByRiotId(nome, tag);
+    const puuid = account.puuid;
+    // Busca os últimos 20 jogos (ajuste se quiser mais/menos)
+    const matchIds = await riotService.getMatchIds(puuid, null, 20);
+
+    // Busca detalhes das partidas
+    const matchesResults = await Promise.allSettled(
+      matchIds.map(id => riotService.getMatchById(id))
+    );
+
+    // Monta um resumo simples de cada partida
+    const matches = [];
+    for (const result of matchesResults) {
+      if (result.status === 'fulfilled' && result.value) {
+        const match = result.value;
+        const participant = match.info.participants.find(p => p.puuid === puuid);
+        if (participant) {
+          matches.push({
+            matchId: match.metadata.matchId,
+            championName: participant.championName,
+            win: participant.win,
+            kills: participant.kills,
+            deaths: participant.deaths,
+            assists: participant.assists,
+            totalCS: participant.totalMinionsKilled + (participant.neutralMinionsKilled || 0),
+            gameDuration: match.info.gameDuration,
+            lane: participant.lane,
+            role: participant.role,
+            date: match.info.gameStartTimestamp
+          });
+        }
+      }
+    }
+
+    return res.status(200).json({ matches });
+  } catch (error) {
+    console.error('Erro ao buscar histórico geral:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar histórico geral." });
+  }
+};

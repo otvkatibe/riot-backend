@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop5 } from '../controller/riot.controller.js';
+import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop5, getHistory } from '../controller/riot.controller.js';
 import { validateNomeTagChampion, validatePuuid, validateNomeTag } from '../middlewares/riot.validation.js';
 
 const router = express.Router();
@@ -153,5 +153,28 @@ router.get('/puuid', validateNomeTag, getPuuid);
  *         description: Erro interno do servidor
  */
 router.get('/challenger-top5', getChallengerTop5);
+
+/**
+ * @swagger
+ * /riot/history:
+ *   get:
+ *     summary: Retorna o histórico geral recente do jogador (todas as partidas)
+ *     tags: [Riot]
+ *     parameters:
+ *       - in: query
+ *         name: nome
+ *         schema:
+ *           type: string
+ *         required: true
+ *       - in: query
+ *         name: tag
+ *         schema:
+ *           type: string
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Histórico geral do jogador
+ */
+router.get('/history', validateNomeTag, getHistory);
 
 export default router;
