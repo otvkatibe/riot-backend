@@ -60,7 +60,7 @@ const getAccountByPuuid = async (puuid) => {
   }
 };
 
-export const getChallengerLeague = async (queue) => {
+export const getChallengerTop3 = async (queue) => {
   try {
     const res = await fetch(
       `https://br1.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/${queue}`,
@@ -72,13 +72,13 @@ export const getChallengerLeague = async (queue) => {
     }
     const data = await res.json();
 
-    // Ordena os jogadores por pontos de liga e pega o top 5
+    // Ordena os jogadores por pontos de liga e pega o top 3
     const sortedPlayers = data.entries.sort((a, b) => b.leaguePoints - a.leaguePoints);
-    const top5Players = sortedPlayers.slice(0, 5);
+    const top3Players = sortedPlayers.slice(0, 3);
 
-    // Busca os detalhes de cada jogador do top 5
+    // Busca os detalhes de cada jogador do top 3
     const detailedPlayers = await Promise.all(
-      top5Players.map(async (player, index) => {
+      top3Players.map(async (player, index) => {
         let profile = null;
         let account = null;
         try {

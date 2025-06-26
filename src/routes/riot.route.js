@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop5, getHistory } from '../controller/riot.controller.js';
+import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop3, getHistory } from '../controller/riot.controller.js';
 import { validateNomeTagChampion, validatePuuid, validateNomeTag } from '../middlewares/riot.validation.js';
 
 const router = express.Router();
@@ -121,13 +121,13 @@ router.get('/puuid', validateNomeTag, getPuuid);
 
 /**
  * @swagger
- * /riot/challenger-top5:
+ * /riot/challenger-top3:
  *   get:
- *     summary: Retorna o top 5 de jogadores do elo Desafiante
+ *     summary: Retorna o top 3 de jogadores do elo Desafiante
  *     tags: [Riot]
  *     responses:
  *       200:
- *         description: Lista do top 5 de jogadores Desafiantes
+ *         description: Lista do top 3 de jogadores Desafiantes
  *         content:
  *           application/json:
  *             schema:
@@ -152,7 +152,7 @@ router.get('/puuid', validateNomeTag, getPuuid);
  *       500:
  *         description: Erro interno do servidor
  */
-router.get('/challenger-top5', getChallengerTop5);
+router.get('/challenger-top3', getChallengerTop3);
 
 /**
  * @swagger
