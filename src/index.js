@@ -4,6 +4,7 @@ import cors from 'cors';
 import riotRoutes from './routes/riot.route.js';
 import userRoutes from './routes/user.route.js';
 import favoriteriotRoutes from './routes/favorite.riot.route.js';
+import tipsRoutes from './routes/tips.route.js';
 import db from './database/configdb.js';
 import { swaggerUi, swaggerSpec } from './swagger.js';
 
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use("/user", userRoutes);
 app.use("/riot", riotRoutes);
 app.use('/riot/favorites', favoriteriotRoutes);
+app.use('/tips', tipsRoutes);
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get('/', (req, res) => res.send('backend is running'));
