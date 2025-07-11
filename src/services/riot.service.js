@@ -124,10 +124,15 @@ export const getChallenger = async (queue, regiao = 'americas') => {
       })
     );
 
-    // Exemplo de retorno com os dados que desejar (aqui retornamos apenas name e pontos)
-    const top3 = detailedPlayers.slice(0, 3).map(player => ({
+    // Retorna os dados do top 3 com chaves descritivas
+    const top3 = detailedPlayers.map(player => ({
+      position: player.position,
       name: player.name,
-      pdl: player.leaguePoints,
+      tag: player.tag,
+      leaguePoints: player.leaguePoints,
+      wins: player.wins,
+      losses: player.losses,
+      puuid: player.puuid,
     }));
 
     return top3;
