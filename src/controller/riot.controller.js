@@ -1,4 +1,5 @@
 import * as riotService from '../services/riot.service.js';
+import { saveQueryToCache, getFromCache } from '../services/analytics.service.js';
 import fetch from 'node-fetch';
 
 // Função auxiliar para processar dados de ranqueadas de forma mais limpa
@@ -233,14 +234,56 @@ export const getWinrate = async (req, res) => {
 
 export const getChallengerTop3 = async (req, res) => {
   try {
+    const cacheKey = 'challenger-solo-duo';
+    
+    // Tentar buscar do cache primeiro (TTL de 1 hora)
+    const cachedData = await getFromCache('challenger-top3', cacheKey);
+    if (cachedData) {
+      return res.status(200).json({
+        data: cachedData,
+        fromCache: true,
+        message: 'Dados retornados do cache (atualizado a cada hora)'
+      });
+    }
+
+    console.log('Buscando novo top 3 challenger da API da Riot...');
     const queue = 'RANKED_SOLO_5x5';
-    // A função de serviço agora busca, ordena e formata o top 3
     const top3Players = await riotService.getChallenger(queue);
 
-    return res.status(200).json(top3Players);
+    // Salvar no cache com TTL de 1 hora
+    await saveQueryToCache('challenger-top3', cacheKey, top3Players, null, 1);
+
+    return res.status(200).json({
+      data: top3Players,
+      fromCache: false,
+      message: 'Dados atualizados da API da Riot'
+    });
+
   } catch (error) {
     console.error('Erro ao buscar top 3 Challenger:', error.message);
-    return res.status(500).json({ message: "Erro ao buscar o top 3 Challenger." });
+    
+    // Em caso de erro, tentar retornar dados expirados do cache como fallback
+    try {
+      const expiredCache = await QueryCache.findOne({ 
+        tipo: 'challenger-top3', 
+        identificador: 'challenger-solo-duo' 
+      }).sort({ updatedAt: -1 });
+      
+      if (expiredCache) {
+        return res.status(200).json({
+          data: expiredCache.dados,
+          fromCache: true,
+          message: 'Dados do cache (API temporariamente indisponível)',
+          warning: 'Dados podem estar desatualizados'
+        });
+      }
+    } catch (cacheError) {
+      console.error('Erro ao buscar cache de fallback:', cacheError.message);
+    }
+
+    return res.status(500).json({ 
+      message: "Erro ao buscar o top 3 Challenger e nenhum dado em cache disponível." 
+    });
   }
 };
 
