@@ -1,6 +1,7 @@
 import * as riotService from '../services/riot.service.js';
 import { saveQueryToCache, getFromCache } from '../services/analytics.service.js';
 import fetch from 'node-fetch';
+import QueryCache from '../models/QueryCache.js';
 
 // Função auxiliar para processar dados de ranqueadas de forma mais limpa
 const processRankedData = (rankedData) => {
@@ -66,6 +67,18 @@ const getLaneAndRole = (participant) => {
 export const getChampionStats = async (req, res) => {
   try {
     const { nome, tag, champion } = req.query;
+    const identificador = `${nome.toLowerCase()}#${tag.toLowerCase()}-${champion.toLowerCase()}`;
+    
+    // Verificar cache primeiro
+    const cachedData = await getFromCache('champion-stats', identificador);
+    if (cachedData) {
+      return res.status(200).json({
+        success: true,
+        data: cachedData,
+        fromCache: true,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Otimização: busca dados da conta e dos campeões em paralelo
     const [account, championsData] = await Promise.all([
@@ -88,32 +101,22 @@ export const getChampionStats = async (req, res) => {
     const stats = {
       vitorias: 0,
       total: 0,
-      totalKills: 0,
-      totalDeaths: 0,
-      totalAssists: 0,
-      totalCS: 0,
-      totalGameDuration: 0,
-      matches: [],
+      matches: []
     };
 
     for (const result of matchesResults) {
       if (result.status === 'fulfilled' && result.value) {
         const match = result.value;
-        const participant = match.info.participants.find(
-          p => p.puuid === puuid && p.championId.toString() === championId
-        );
-        if (participant) {
+        const participant = match.info.participants.find(p => p.puuid === puuid);
+        
+        if (participant && participant.championId.toString() === championId) {
           stats.total++;
           if (participant.win) stats.vitorias++;
-          stats.totalKills += participant.kills;
-          stats.totalDeaths += participant.deaths;
-          stats.totalAssists += participant.assists;
-          stats.totalCS += participant.totalMinionsKilled + (participant.neutralMinionsKilled || 0);
-          stats.totalGameDuration += match.info.gameDuration;
           
           const { lane, role } = getLaneAndRole(participant);
-
+          
           stats.matches.push({
+            matchId: match.metadata.matchId,
             win: participant.win,
             kills: participant.kills,
             deaths: participant.deaths,
@@ -129,7 +132,15 @@ export const getChampionStats = async (req, res) => {
       }
     }
     
-    return res.status(200).json(stats);
+    // Salvar no cache antes do return
+    await saveQueryToCache('champion-stats', identificador, stats);
+    
+    return res.status(200).json({
+      success: true,
+      data: stats,
+      fromCache: false,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Erro ao buscar estatísticas do campeão:', error.message);
     return res.status(500).json({ message: "Erro ao buscar estatísticas do campeão." });
@@ -138,9 +149,32 @@ export const getChampionStats = async (req, res) => {
 
 export const getProfile = async (req, res) => {
   try {
-    const { puuid } = req.query;
+    const { nome, tag, puuid } = req.query;
 
-    const summonerData = await riotService.getSummonerByPuuid(puuid);
+    let finalPuuid = puuid;
+    let identificador = puuid;
+    
+    // Se não foi fornecido puuid, busca pelos nome/tag (padrão moderno)
+    if (!puuid && nome && tag) {
+      const account = await riotService.getAccountByRiotId(nome, tag);
+      finalPuuid = account.puuid;
+      identificador = `${nome.toLowerCase()}#${tag.toLowerCase()}`;
+    } else if (!puuid) {
+      return res.status(400).json({ message: 'PUUID ou nome/tag são obrigatórios' });
+    }
+
+    // Verificar cache primeiro
+    const cachedData = await getFromCache('profile', identificador);
+    if (cachedData) {
+      return res.status(200).json({
+        success: true,
+        data: cachedData,
+        fromCache: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const summonerData = await riotService.getSummonerByPuuid(finalPuuid);
     const rankedData = await riotService.getRankedBySummonerId(summonerData.id);
 
     const ranks = processRankedData(rankedData);
@@ -150,9 +184,20 @@ export const getProfile = async (req, res) => {
       summonerLevel: summonerData.summonerLevel,
       name: summonerData.name,
       ranks,
+      puuid: finalPuuid,
+      gameName: nome || summonerData.name,
+      tagLine: tag || 'BR1'
     };
 
-    return res.status(200).json(responseData);
+    // Salvar no cache
+    await saveQueryToCache('profile', identificador, responseData);
+
+    return res.status(200).json({
+      success: true,
+      data: responseData,
+      fromCache: false,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Erro ao buscar perfil:', error.message);
     return res.status(500).json({ message: "Erro ao buscar perfil." });
@@ -163,7 +208,18 @@ export const getPuuid = async (req, res) => {
   try {
     const { nome, tag } = req.query;
     const data = await riotService.getAccountByRiotId(nome, tag);
-    return res.status(200).json({ puuid: data.puuid });
+    
+    return res.status(200).json({ 
+      success: true,
+      data: {
+        puuid: data.puuid,
+        gameName: data.gameName,
+        tagLine: data.tagLine,
+        deprecated: true,
+        message: "Este endpoint será removido. Use /profile?nome=X&tag=Y diretamente."
+      },
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Erro ao buscar PUUID:', error.message);
     return res.status(500).json({ message: "Erro ao buscar PUUID." });
@@ -173,10 +229,22 @@ export const getPuuid = async (req, res) => {
 export const getMaestria = async (req, res) => {
   try {
     const { nome, tag } = req.query;
+    const identificador = `${nome.toLowerCase()}#${tag.toLowerCase()}`;
+    
+    // Verificar cache primeiro
+    const cachedData = await getFromCache('maestria', identificador);
+    if (cachedData) {
+      return res.status(200).json({
+        success: true,
+        data: cachedData,
+        fromCache: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const account = await riotService.getAccountByRiotId(nome, tag);
     const puuid = account.puuid;
 
-    // Otimização: busca maestria e dados dos campeões em paralelo
     const [masteryData, championsData] = await Promise.all([
       riotService.getChampionMastery(puuid),
       riotService.getChampionsData()
@@ -194,7 +262,16 @@ export const getMaestria = async (req, res) => {
       };
     });
 
-    return res.status(200).json({ dados: top10 });
+    const responseData = { dados: top10 };
+    
+    await saveQueryToCache('maestria', identificador, responseData);
+
+    return res.status(200).json({
+      success: true,
+      data: responseData,
+      fromCache: false,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Erro ao buscar maestria:', error.message);
     return res.status(500).json({ message: "Erro ao buscar dados de maestria." });
@@ -204,6 +281,19 @@ export const getMaestria = async (req, res) => {
 export const getWinrate = async (req, res) => {
   try {
     const { nome, tag } = req.query;
+    const identificador = `${nome.toLowerCase()}#${tag.toLowerCase()}`;
+    
+    // Verificar cache primeiro
+    const cachedData = await getFromCache('winrate', identificador);
+    if (cachedData) {
+      return res.status(200).json({
+        success: true,
+        data: cachedData,
+        fromCache: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const account = await riotService.getAccountByRiotId(nome, tag);
     const puuid = account.puuid;
     const matchIds = await riotService.getMatchIds(puuid, 420, 30);
@@ -225,7 +315,22 @@ export const getWinrate = async (req, res) => {
     }
 
     const winrate = total > 0 ? ((vitorias / total) * 100).toFixed(2) : "0.00";
-    return res.status(200).json({ winrate: `${winrate}%`, vitorias, derrotas: total - vitorias, total });
+    const responseData = { 
+      winrate: `${winrate}%`, 
+      vitorias, 
+      derrotas: total - vitorias, 
+      total 
+    };
+
+    // Salvar no cache
+    await saveQueryToCache('winrate', identificador, responseData);
+
+    return res.status(200).json({
+      success: true,
+      data: responseData,
+      fromCache: false,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Erro ao buscar winrate:', error.message);
     return res.status(500).json({ message: "Erro ao buscar winrate." });
@@ -240,9 +345,11 @@ export const getChallengerTop3 = async (req, res) => {
     const cachedData = await getFromCache('challenger-top3', cacheKey);
     if (cachedData) {
       return res.status(200).json({
+        success: true,
         data: cachedData,
         fromCache: true,
-        message: 'Dados retornados do cache (atualizado a cada hora)'
+        message: 'Dados retornados do cache (atualizado a cada hora)',
+        timestamp: new Date().toISOString()
       });
     }
 
@@ -254,9 +361,11 @@ export const getChallengerTop3 = async (req, res) => {
     await saveQueryToCache('challenger-top3', cacheKey, top3Players, null, 1);
 
     return res.status(200).json({
+      success: true,
       data: top3Players,
       fromCache: false,
-      message: 'Dados atualizados da API da Riot'
+      message: 'Dados atualizados da API da Riot',
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
@@ -271,10 +380,12 @@ export const getChallengerTop3 = async (req, res) => {
       
       if (expiredCache) {
         return res.status(200).json({
+          success: true,
           data: expiredCache.dados,
           fromCache: true,
           message: 'Dados do cache (API temporariamente indisponível)',
-          warning: 'Dados podem estar desatualizados'
+          warning: 'Dados podem estar desatualizados',
+          timestamp: new Date().toISOString()
         });
       }
     } catch (cacheError) {
@@ -290,8 +401,22 @@ export const getChallengerTop3 = async (req, res) => {
 export const getHistory = async (req, res) => {
   try {
     const { nome, tag } = req.query;
+    const identificador = `${nome.toLowerCase()}#${tag.toLowerCase()}-history`;
+    
+    // Verificar cache primeiro
+    const cachedData = await getFromCache('history', identificador);
+    if (cachedData) {
+      return res.status(200).json({
+        success: true,
+        data: cachedData,
+        fromCache: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const account = await riotService.getAccountByRiotId(nome, tag);
     const puuid = account.puuid;
+
     // Busca os últimos 20 jogos (ajuste se quiser mais/menos)
     const matchIds = await riotService.getMatchIds(puuid, null, 20);
 
@@ -324,7 +449,17 @@ export const getHistory = async (req, res) => {
       }
     }
 
-    return res.status(200).json({ matches });
+    const responseData = { matches };
+    
+    // Salvar no cache
+    await saveQueryToCache('history', identificador, responseData);
+
+    return res.status(200).json({
+      success: true,
+      data: responseData,
+      fromCache: false,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Erro ao buscar histórico geral:', error.message);
     return res.status(500).json({ message: "Erro ao buscar histórico geral." });

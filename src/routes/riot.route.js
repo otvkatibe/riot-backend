@@ -1,6 +1,6 @@
 import express from 'express';
 import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop3, getHistory, getChampionsList, getChampionDetail } from '../controller/riot.controller.js';
-import { validateNomeTagChampion, validatePuuid, validateNomeTag } from '../middlewares/riot.validation.js';
+import { validateNomeTagChampion, validateNomeTag, validateProfileParams } from '../middlewares/riot.validation.js';
 
 const router = express.Router();
 
@@ -89,12 +89,37 @@ router.get('/champion-stats', validateNomeTagChampion, getChampionStats);
  *         name: puuid
  *         schema:
  *           type: string
- *         required: true
+ *         description: PUUID do jogador (legado)
+ *       - in: query
+ *         name: nome
+ *         schema:
+ *           type: string
+ *         description: Nome do jogador (moderno)
+ *       - in: query
+ *         name: tag
+ *         schema:
+ *           type: string
+ *         description: Tag do jogador (moderno)
  *     responses:
  *       200:
  *         description: Perfil do jogador
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 profileIconId:
+ *                   type: number
+ *                 summonerLevel:
+ *                   type: number
+ *                 name:
+ *                   type: string
+ *                 puuid:
+ *                   type: string
+ *                 ranks:
+ *                   type: object
  */
-router.get('/profile', validatePuuid, getProfile);
+router.get('/profile', validateProfileParams, getProfile);
 
 /**
  * @swagger

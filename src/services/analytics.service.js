@@ -53,7 +53,7 @@ export const getFromCache = async (tipo, identificador) => {
       return cache.dados;
     }
     
-    console.log(`💸 Cache miss: ${tipo}/${identificador}`);
+    console.log(`Cache miss: ${tipo}/${identificador}`);
     return null;
   } catch (error) {
     console.error('Erro ao buscar cache:', error.message);

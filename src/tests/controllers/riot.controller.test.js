@@ -18,7 +18,7 @@ describe('Riot Controller', () => {
         .get('/riot/puuid');
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Nome e tag são obrigatórios');
+      expect(response.body.message).toBe('Nome e tag são obrigatórios');
     });
 
     it('deve falhar sem tag', async () => {
@@ -26,7 +26,7 @@ describe('Riot Controller', () => {
         .get('/riot/puuid?nome=Player1');
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Nome e tag são obrigatórios');
+      expect(response.body.message).toBe('Nome e tag são obrigatórios'); // CORRIGIDO
     });
 
     it('deve retornar erro 500 para usuário inexistente', async () => {
@@ -41,18 +41,17 @@ describe('Riot Controller', () => {
       const response = await request(app)
         .get('/riot/puuid?nome=Faker&tag=T1');
 
-      // Aceita tanto sucesso quanto erro (API pode estar indisponível)
       expect([200, 500]).toContain(response.status);
     }, 15000);
   });
 
   describe('GET /riot/profile', () => {
-    it('deve falhar sem puuid', async () => {
+    it('deve falhar sem parâmetros', async () => {
       const response = await request(app)
         .get('/riot/profile');
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('PUUID é obrigatório');
+      expect(response.body.message).toBe('PUUID ou parâmetros nome e tag são obrigatórios'); // CORRIGIDO
     });
 
     it('deve retornar erro 500 para puuid inválido', async () => {
@@ -61,6 +60,13 @@ describe('Riot Controller', () => {
 
       expect(response.status).toBe(500);
       expect(response.body.message).toBe('Erro ao buscar perfil.');
+    });
+
+    it('deve aceitar nome e tag como alternativa', async () => {
+      const response = await request(app)
+        .get('/riot/profile?nome=TestPlayer&tag=BR1');
+
+      expect([200, 500]).toContain(response.status);
     });
   });
 

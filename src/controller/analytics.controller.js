@@ -9,7 +9,8 @@ export const getAnalytics = async (req, res) => {
     res.json({
       success: true,
       message: 'Analytics da comunidade gerados com sucesso',
-      data: analytics
+      data: analytics,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
@@ -23,13 +24,14 @@ export const getAnalytics = async (req, res) => {
 
 export const getCacheStatus = async (req, res) => {
   try {
-    console.log('🔍 Verificando status do cache...');
+    console.log('Verificando status do cache...');
     const cacheStats = await getCacheStats();
     
     res.json({
       success: true,
       message: 'Status do cache recuperado com sucesso',
-      data: cacheStats
+      data: cacheStats,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
@@ -51,10 +53,14 @@ export const getPlayerInsights = async (req, res) => {
       });
     }
 
-    const identificador = `${nome.toLowerCase()}#${tag.toLowerCase()}`;
+    // Busca mais robusta para incluir champion-stats
+    const baseIdentificador = `${nome.toLowerCase()}#${tag.toLowerCase()}`;
     
     const cacheEntries = await QueryCache.find({ 
-      identificador: { $regex: identificador, $options: 'i' }
+      $or: [
+        { identificador: { $regex: `^${baseIdentificador}$`, $options: 'i' } },
+        { identificador: { $regex: `^${baseIdentificador}-`, $options: 'i' } }
+      ]
     }).sort({ ultimaConsulta: -1 });
 
     if (cacheEntries.length === 0) {
@@ -64,7 +70,8 @@ export const getPlayerInsights = async (req, res) => {
           jogador: `${nome}#${tag}`,
           message: 'Nenhum dado encontrado para este jogador',
           disponivel: false 
-        }
+        },
+        timestamp: new Date().toISOString()
       });
     }
 
@@ -85,7 +92,8 @@ export const getPlayerInsights = async (req, res) => {
 
     res.json({
       success: true,
-      data: insights
+      data: insights,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
