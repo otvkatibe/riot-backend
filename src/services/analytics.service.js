@@ -64,10 +64,9 @@ export const getFromCache = async (tipo, identificador) => {
 export const getCacheStats = async () => {
   try {
     const [totalEntries, hitMissStats, typeDistribution] = await Promise.all([
-      QueryCache.countDocuments({ expiresAt: { $gt: new Date() } }),
+      QueryCache.countDocuments(),
       
       QueryCache.aggregate([
-        { $match: { expiresAt: { $gt: new Date() } } },
         { $group: {
           _id: null,
           totalConsultas: { $sum: '$totalConsultas' },
@@ -76,7 +75,6 @@ export const getCacheStats = async () => {
       ]),
       
       QueryCache.aggregate([
-        { $match: { expiresAt: { $gt: new Date() } } },
         { $group: {
           _id: '$tipo',
           count: { $sum: 1 },
@@ -104,7 +102,8 @@ export const getTopPlayersAnalytics = async () => {
       jogadoresMaisBuscados,
       championsMaisConsultados,
       estatisticasGerais,
-      jogadoresMaisFavoritados
+      distribuicaoRanks, // NOVA ESTATÍSTICA
+      horariosPopulares // NOVA ESTATÍSTICA
     ] = await Promise.all([
       // Top 10 jogadores mais buscados
       QueryCache.aggregate([
@@ -125,11 +124,19 @@ export const getTopPlayersAnalytics = async () => {
         }}
       ]),
 
-      // Top 10 campeões mais consultados
+      // Top 10 campeões mais consultados (champion-stats)
       QueryCache.aggregate([
         { $match: { tipo: 'champion-stats' } },
+        { $addFields: {
+          championName: {
+            $arrayElemAt: [
+              { $split: ['$identificador', '-'] }, 
+              -1
+            ]
+          }
+        }},
         { $group: {
-          _id: '$dados.championName',
+          _id: '$championName',
           totalConsultas: { $sum: '$totalConsultas' }
         }},
         { $sort: { totalConsultas: -1 } },
@@ -156,18 +163,41 @@ export const getTopPlayersAnalytics = async () => {
         }}
       ]),
 
-      // Top jogadores favoritados
-      FavoriteRiot.aggregate([
-        { $match: { tipo: 'player' } },
-        { $group: {
-          _id: { nome: '$nome', tag: '$tag' },
-          totalFavoritos: { $sum: 1 }
+      // NOVA: Distribuição de ranks (baseado nos perfis consultados)
+      QueryCache.aggregate([
+        { $match: { 
+          tipo: 'profile',
+          'dados.data.ranks.soloDuo.tier': { $exists: true }
         }},
-        { $sort: { totalFavoritos: -1 } },
-        { $limit: 10 },
+        { $group: {
+          _id: '$dados.data.ranks.soloDuo.tier',
+          quantidade: { $sum: 1 },
+          consultas: { $sum: '$totalConsultas' }
+        }},
+        { $sort: { quantidade: -1 } },
         { $project: {
-          jogador: { $concat: ['$_id.nome', '#', '$_id.tag'] },
-          favoritos: '$totalFavoritos'
+          rank: '$_id',
+          jogadores: '$quantidade',
+          consultasTotal: '$consultas'
+        }}
+      ]),
+
+      // NOVA: Horários mais populares (baseado em ultimaConsulta)
+      QueryCache.aggregate([
+        { $addFields: {
+          hora: { $hour: '$ultimaConsulta' }
+        }},
+        { $group: {
+          _id: '$hora',
+          totalConsultas: { $sum: '$totalConsultas' },
+          jogadoresUnicos: { $addToSet: '$identificador' }
+        }},
+        { $sort: { totalConsultas: -1 } },
+        { $limit: 24 },
+        { $project: {
+          hora: '$_id',
+          consultas: '$totalConsultas',
+          jogadoresUnicos: { $size: '$jogadoresUnicos' }
         }}
       ])
     ]);
@@ -176,7 +206,8 @@ export const getTopPlayersAnalytics = async () => {
       jogadoresMaisBuscados,
       championsMaisConsultados,
       estatisticasGerais: estatisticasGerais[0] || { totalConsultas: 0, jogadoresUnicos: 0, tiposConsulta: 0 },
-      jogadoresMaisFavoritados,
+      distribuicaoRanks, // NOVA
+      horariosPopulares, // NOVA
       geradoEm: new Date().toISOString()
     };
 

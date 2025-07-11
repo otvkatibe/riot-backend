@@ -33,7 +33,6 @@ export function validateNomeTag(req, res, next) {
 export const validateProfileParams = (req, res, next) => {
   const { nome, tag, puuid } = req.query;
   
-  // Aceita PUUID (legado) OU nome+tag (moderno)
   if (!puuid && (!nome || !tag)) {
     return res.status(400).json({ 
       message: 'PUUID ou parâmetros nome e tag são obrigatórios' 

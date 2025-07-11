@@ -70,38 +70,13 @@ describe('Riot Controller', () => {
     });
   });
 
-  describe('GET /riot/champion-stats', () => {
-    it('deve falhar sem champion', async () => {
-      const response = await request(app)
-        .get('/riot/champion-stats?nome=Player1&tag=BR1');
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Parâmetros obrigatórios faltando');
-    });
-
-    it('deve retornar erro para campeão inexistente', async () => {
-      const response = await request(app)
-        .get('/riot/champion-stats?nome=TestUser&tag=BR1&champion=CampeaoInexistente');
-
-      expect([400, 500]).toContain(response.status);
-    });
-
-    it('deve processar requisição com parâmetros válidos', async () => {
-      const response = await request(app)
-        .get('/riot/champion-stats?nome=Faker&tag=T1&champion=Azir');
-
-      // Aceita tanto sucesso quanto erro (depende da API)
-      expect([200, 400, 500]).toContain(response.status);
-    }, 15000);
-  });
-
   describe('GET /riot/maestria', () => {
     it('deve falhar sem parâmetros', async () => {
       const response = await request(app)
         .get('/riot/maestria');
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Nome e tag são obrigatórios');
+      expect(response.body.message).toBe('Nome e tag são obrigatórios'); // ✅ CORRIGIDO
     });
 
     it('deve retornar erro 500 para usuário inexistente', async () => {
@@ -127,7 +102,7 @@ describe('Riot Controller', () => {
         .get('/riot/winrate');
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Nome e tag são obrigatórios');
+      expect(response.body.message).toBe('Nome e tag são obrigatórios'); // ✅ CORRIGIDO
     });
 
     it('deve retornar erro 500 para usuário inexistente', async () => {
@@ -144,6 +119,31 @@ describe('Riot Controller', () => {
 
       // Aceita tanto sucesso quanto erro
       expect([200, 500]).toContain(response.status);
+    }, 15000);
+  });
+
+  describe('GET /riot/champion-stats', () => {
+    it('deve falhar sem champion', async () => {
+      const response = await request(app)
+        .get('/riot/champion-stats?nome=Player1&tag=BR1');
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe('Parâmetros obrigatórios faltando'); // ✅ CORRIGIDO
+    });
+
+    it('deve retornar erro para campeão inexistente', async () => {
+      const response = await request(app)
+        .get('/riot/champion-stats?nome=TestUser&tag=BR1&champion=CampeaoInexistente');
+
+      expect([400, 500]).toContain(response.status);
+    });
+
+    it('deve processar requisição com parâmetros válidos', async () => {
+      const response = await request(app)
+        .get('/riot/champion-stats?nome=Faker&tag=T1&champion=Azir');
+
+      // Aceita tanto sucesso quanto erro (depende da API)
+      expect([200, 400, 500]).toContain(response.status);
     }, 15000);
   });
 });

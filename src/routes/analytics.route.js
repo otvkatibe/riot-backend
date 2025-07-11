@@ -7,11 +7,11 @@ const router = express.Router();
  * @swagger
  * /analytics/community:
  *   get:
- *     summary: Analytics da comunidade
+ *     summary: Retorna analytics da comunidade com estatísticas interessantes
  *     tags: [Analytics]
  *     responses:
  *       200:
- *         description: Estatísticas da comunidade baseadas em cache
+ *         description: Analytics da comunidade gerados com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -20,14 +20,12 @@ const router = express.Router();
  *                 success:
  *                   type: boolean
  *                 data:
- *                   type: object
- *                   properties:
- *                     jogadoresMaisBuscados:
- *                       type: array
- *                     championsMaisConsultados:
- *                       type: array
- *                     estatisticasGerais:
- *                       type: object
+ *                   $ref: '#/components/schemas/CommunityAnalytics'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       500:
+ *         description: Erro interno do servidor
  */
 router.get('/community', getAnalytics);
 
@@ -35,11 +33,22 @@ router.get('/community', getAnalytics);
  * @swagger
  * /analytics/cache-status:
  *   get:
- *     summary: Status do sistema de cache
+ *     summary: Retorna estatísticas do sistema de cache
  *     tags: [Analytics]
  *     responses:
  *       200:
- *         description: Estatísticas do cache
+ *         description: Status do cache recuperado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/CacheStatus'
+ *       500:
+ *         description: Erro interno do servidor
  */
 router.get('/cache-status', getCacheStatus);
 
@@ -47,22 +56,28 @@ router.get('/cache-status', getCacheStatus);
  * @swagger
  * /analytics/player:
  *   get:
- *     summary: Insights de um jogador específico
+ *     summary: Retorna insights específicos de um jogador
  *     tags: [Analytics]
  *     parameters:
  *       - in: query
  *         name: nome
- *         required: true
  *         schema:
  *           type: string
+ *         required: true
+ *         description: Nome do jogador
  *       - in: query
  *         name: tag
- *         required: true
  *         schema:
  *           type: string
+ *         required: true
+ *         description: Tag do jogador
  *     responses:
  *       200:
- *         description: Insights do jogador
+ *         description: Insights do jogador recuperados com sucesso
+ *       400:
+ *         description: Parâmetros obrigatórios faltando
+ *       500:
+ *         description: Erro interno do servidor
  */
 router.get('/player', getPlayerInsights);
 

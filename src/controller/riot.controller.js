@@ -133,7 +133,7 @@ export const getChampionStats = async (req, res) => {
     }
     
     // Salvar no cache antes do return
-    await saveQueryToCache('champion-stats', identificador, stats);
+    await saveQueryToCache('champion-stats', identificador, stats, null, 2); // ✅ ADICIONAR: TTL de 2 horas
     
     return res.status(200).json({
       success: true,

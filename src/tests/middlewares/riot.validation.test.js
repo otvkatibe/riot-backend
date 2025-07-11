@@ -38,7 +38,7 @@ describe('Riot Validation Middlewares', () => {
       validateNomeTag(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('Nome e tag são obrigatórios');
+      expect(res.body.message).toBe('Nome e tag são obrigatórios'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
 
@@ -48,7 +48,7 @@ describe('Riot Validation Middlewares', () => {
       validateNomeTag(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('Nome e tag são obrigatórios');
+      expect(res.body.message).toBe('Nome e tag são obrigatórios'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
   });
@@ -69,7 +69,7 @@ describe('Riot Validation Middlewares', () => {
       validatePuuid(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('PUUID é obrigatório');
+      expect(res.body.message).toBe('PUUID é obrigatório'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
   });
@@ -90,7 +90,7 @@ describe('Riot Validation Middlewares', () => {
       validateNomeTagChampion(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('Parâmetros obrigatórios faltando');
+      expect(res.body.message).toBe('Parâmetros obrigatórios faltando'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
 
@@ -100,7 +100,7 @@ describe('Riot Validation Middlewares', () => {
       validateNomeTagChampion(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('Parâmetros obrigatórios faltando');
+      expect(res.body.message).toBe('Parâmetros obrigatórios faltando'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
 
@@ -110,7 +110,7 @@ describe('Riot Validation Middlewares', () => {
       validateNomeTagChampion(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('Parâmetros obrigatórios faltando');
+      expect(res.body.message).toBe('Parâmetros obrigatórios faltando'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
   });
@@ -131,7 +131,7 @@ describe('Riot Validation Middlewares', () => {
       validateNomeTagTipo(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('Nome, tag e tipo são obrigatórios');
+      expect(res.body.message).toBe('Nome, tag e tipo são obrigatórios'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
 
@@ -141,7 +141,7 @@ describe('Riot Validation Middlewares', () => {
       validateNomeTagTipo(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('Nome, tag e tipo são obrigatórios');
+      expect(res.body.message).toBe('Nome, tag e tipo são obrigatórios'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
 
@@ -151,7 +151,7 @@ describe('Riot Validation Middlewares', () => {
       validateNomeTagTipo(req, res, next);
       
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('Nome, tag e tipo são obrigatórios');
+      expect(res.body.message).toBe('Nome, tag e tipo são obrigatórios'); // ✅ CORRIGIDO
       expect(next.called).toBe(false);
     });
   });
