@@ -21,7 +21,6 @@ const endpoints = {
   }
 };
 
-// Agora cada função recebe um parâmetro "regiao" com valor padrão "americas"
 export const getAccountByRiotId = async (nome, tag, regiao = 'americas') => {
   try {
     const baseURL = endpoints.riotAccount[regiao];
@@ -37,45 +36,101 @@ export const getAccountByRiotId = async (nome, tag, regiao = 'americas') => {
   }
 };
 
-export const getSummonerByName = async (summonerName, regiao = 'americas') => {
+/**
+ * Busca os dados de um invocador pelo seu summonerId para obter o PUUID.
+ * @param {string} summonerId - O ID do invocador.
+ * @param {string} regiao - A região a ser utilizada.
+ * @returns {Promise<object|null>} O perfil do invocador ou null se falhar.
+ */
+const getSummonerBySummonerId = async (summonerId, regiao = 'americas') => {
   try {
     const baseURL = endpoints.summoner[regiao];
     const res = await fetch(
-      `${baseURL}/lol/summoner/v4/summoners/by-name/${encodeURIComponent(summonerName)}`,
+      `${baseURL}/lol/summoner/v4/summoners/${summonerId}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
-    if (!res.ok) throw new Error("Invocador não encontrado pelo nome");
+    if (!res.ok) {
+      console.error(`Não foi possível buscar o perfil para o summonerId: ${summonerId}`);
+      return null;
+    }
     return await res.json();
   } catch (error) {
-    console.log('Erro ao buscar invocador por nome:', error);
-    throw new Error('Erro ao buscar invocador por nome.');
+    console.error('Erro em getSummonerBySummonerId:', error);
+    return null;
   }
 };
 
-export const getAccountByPuuid = async (puuid, regiao = 'americas') => {
+/**
+ * Busca os dados da conta do jogador pelo PUUID para obter a tag.
+ * @param {string} puuid - O PUUID do jogador.
+ * @param {string} regiao - A região a ser utilizada.
+ * @returns {Promise<object|null>} Os dados da conta ou null se falhar.
+ */
+const getAccountByPuuid = async (puuid, regiao = 'americas') => {
   try {
     const baseURL = endpoints.riotAccount[regiao];
     const res = await fetch(
       `${baseURL}/riot/account/v1/accounts/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
-    if (!res.ok) throw new Error("Conta não encontrada pelo PUUID");
+    if (!res.ok) {
+      console.error(`Não foi possível buscar a conta para o puuid: ${puuid}`);
+      return null;
+    }
     return await res.json();
   } catch (error) {
-    console.log('Erro ao buscar conta por PUUID:', error);
-    throw new Error('Erro ao buscar conta por PUUID.');
+    console.error('Erro em getAccountByPuuid:', error);
+    return null;
   }
 };
 
-export const getChallengerLeague = async (queue, regiao = 'americas') => {
+export const getChallenger = async (queue, regiao = 'americas') => {
   try {
     const baseURL = endpoints.summoner[regiao];
     const res = await fetch(
       `${baseURL}/lol/league/v4/challengerleagues/by-queue/${queue}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
-    if (!res.ok) throw new Error("Erro ao buscar liga Challenger");
-    return await res.json();
+    if (!res.ok) {
+      console.error(`Riot API respondeu com status ${res.status}:`, await res.text());
+      throw new Error("Erro ao buscar liga Challenger");
+    }
+    const data = await res.json();
+
+    // Ordena os jogadores por pontos de liga e pega o top 3
+    const sortedPlayers = data.entries.sort((a, b) => b.leaguePoints - a.leaguePoints);
+    const top3Players = sortedPlayers.slice(0, 3);
+
+    // Busca os detalhes de cada jogador do top 3
+    const detailedPlayers = await Promise.all(
+      top3Players.map(async (player, index) => {
+        let profile = null;
+        let account = null;
+        try {
+          profile = await getSummonerBySummonerId(player.summonerId, regiao);
+          account = profile ? await getAccountByPuuid(profile.puuid, regiao) : null;
+        } catch (error) {
+          console.error(error);
+        }
+        return {
+          position: index + 1,
+          name: account?.gameName || player.summonerName,
+          tag: account?.tagLine || '????',
+          leaguePoints: player.leaguePoints,
+          wins: player.wins,
+          losses: player.losses,
+          puuid: profile?.puuid || ''
+        };
+      })
+    );
+
+    // Exemplo de retorno com os dados que desejar (aqui retornamos apenas name e pontos)
+    const top3 = detailedPlayers.slice(0, 3).map(player => ({
+      name: player.name,
+      pdl: player.leaguePoints,
+    }));
+
+    return top3;
   } catch (error) {
     console.log('Erro ao buscar liga Challenger:', error);
     throw new Error('Erro ao buscar liga Challenger.');
@@ -84,7 +139,6 @@ export const getChallengerLeague = async (queue, regiao = 'americas') => {
 
 export const getChampionMastery = async (puuid, regiao = 'americas') => {
   try {
-    // O endpoint de maestria geralmente segue o mesmo do summoner
     const baseURL = endpoints.summoner[regiao];
     const res = await fetch(
       `${baseURL}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`,
