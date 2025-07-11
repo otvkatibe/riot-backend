@@ -22,7 +22,6 @@ const endpoints = {
 };
 
 // Agora cada função recebe um parâmetro "regiao" com valor padrão "americas"
-
 export const getAccountByRiotId = async (nome, tag, regiao = 'americas') => {
   try {
     const baseURL = endpoints.riotAccount[regiao];
@@ -171,4 +170,3 @@ export const getRankedBySummonerId = async (summonerId, regiao = 'americas') => 
     throw new Error('Erro ao buscar ranked.');
   }
 };
-````
