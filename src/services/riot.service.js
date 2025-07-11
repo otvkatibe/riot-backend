@@ -101,7 +101,13 @@ export const getChallenger = async (queue) => {
       })
     );
 
-    return detailedPlayers;
+    const top3 = detailedPlayers.slice(0, 3).map(player => ({
+      name: player.summonerName,
+      pdl: player.leaguePoints,
+      
+    }));
+
+    return top3;
   } catch (error) {
     console.log('Erro ao buscar liga Challenger:', error);
     throw new Error('Erro ao buscar liga Challenger.');
