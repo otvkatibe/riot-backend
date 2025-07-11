@@ -101,11 +101,10 @@ export const getChallenger = async (queue) => {
       })
     );
 
-    // Supondo que você tenha algo assim:
     const top3 = detailedPlayers.slice(0, 3).map(player => ({
-      name: player.summonerName, // <-- Certifique-se de usar 'summonerName'
+      name: player.summonerName,
       pdl: player.leaguePoints,
-      // outros campos se necessário
+      
     }));
 
     return top3;
