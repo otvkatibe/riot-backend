@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop3, getHistory } from '../controller/riot.controller.js';
+import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop3, getHistory, getChampionsList, getChampionDetail } from '../controller/riot.controller.js';
 import { validateNomeTagChampion, validatePuuid, validateNomeTag } from '../middlewares/riot.validation.js';
 
 const router = express.Router();
@@ -176,5 +176,35 @@ router.get('/challenger-top3', getChallengerTop3);
  *         description: Histórico geral do jogador
  */
 router.get('/history', validateNomeTag, getHistory);
+
+/**
+ * @swagger
+ * /riot/champions:
+ *   get:
+ *     summary: Retorna a lista de campeões
+ *     tags: [Riot]
+ *     responses:
+ *       200:
+ *         description: Lista de campeões
+ */
+router.get('/champions', getChampionsList);
+
+/**
+ * @swagger
+ * /riot/champions/{id}:
+ *   get:
+ *     summary: Retorna os detalhes de um campeão específico
+ *     tags: [Riot]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Detalhes do campeão
+ */
+router.get('/champions/:id', getChampionDetail);
 
 export default router;
