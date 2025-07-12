@@ -1,244 +1,323 @@
+import * as riotService from '../services/riot.service.js';
 import fetch from 'node-fetch';
 
-const RIOT_API_KEY = process.env.RIOT_API_KEY;
+// Função auxiliar para processar dados de ranqueadas de forma mais limpa
+const processRankedData = (rankedData) => {
+  const rankMap = {
+    RANKED_SOLO_5x5: 'soloDuo',
+    RANKED_FLEX_SR: 'flex',
+  };
+  const queueTypeName = {
+    RANKED_SOLO_5x5: 'Ranqueada Solo/Duo',
+    RANKED_FLEX_SR: 'Ranqueada Flexível',
+  };
 
-// Mapeamento clássico dos endpoints por cluster
-const endpoints = {
-  riotAccount: {
-    americas: 'https://americas.api.riotgames.com',
-    europe: 'https://europe.api.riotgames.com',
-    asia: 'https://asia.api.riotgames.com'
-  },
-  summoner: {
-    // Endpoints para regiões diretamente mapeadas
-    na1: 'https://na1.api.riotgames.com',
-    br1: 'https://br1.api.riotgames.com',
-    euw1: 'https://euw1.api.riotgames.com',
-    kr: 'https://kr.api.riotgames.com'
-  },
-  match: {
-    americas: 'https://americas.api.riotgames.com',
-    europe: 'https://europe.api.riotgames.com',
-    asia: 'https://asia.api.riotgames.com'
-  }
+  return rankedData.reduce((acc, entry) => {
+    const key = rankMap[entry.queueType];
+    if (key) {
+      acc[key] = {
+        tier: entry.tier,
+        rank: entry.rank,
+        leaguePoints: entry.leaguePoints,
+        wins: entry.wins,
+        losses: entry.losses,
+        queueType: queueTypeName[entry.queueType],
+      };
+    }
+    return acc;
+  }, { soloDuo: null, flex: null });
 };
 
-/**
- * Função auxiliar que recebe o nome do serviço e o código da região e retorna a URL base correta.
- * Agrupa os códigos de região conforme os clusters:
- *
- * - Cluster Americano: na1, br1, la1, la2, oc1
- * - Cluster Europeu: euw1, eun1, tr1, ru, me1
- * - Cluster Asiático: kr, jp1, sg2, tw2, vn2
- */
-const getBaseUrl = (service, region) => {
-  const lowerRegion = region.toLowerCase();
-  
-  if (service === 'riotAccount') {
-    if (['na1', 'br1', 'la1', 'la2', 'oc1'].includes(lowerRegion)) {
-      return endpoints.riotAccount.americas;
-    }
-    if (['euw1', 'eun1', 'tr1', 'ru', 'me1'].includes(lowerRegion)) {
-      return endpoints.riotAccount.europe;
-    }
-    if (['kr', 'jp1', 'sg2', 'tw2', 'vn2'].includes(lowerRegion)) {
-      return endpoints.riotAccount.asia;
-    }
-  } else if (service === 'summoner') {
-    if (endpoints.summoner[lowerRegion]) {
-      return endpoints.summoner[lowerRegion];
-    }
-    if (['na1', 'br1', 'la1', 'la2', 'oc1'].includes(lowerRegion)) {
-      return endpoints.riotAccount.americas;
-    }
-    if (['euw1', 'eun1', 'tr1', 'ru', 'me1'].includes(lowerRegion)) {
-      return endpoints.riotAccount.europe;
-    }
-    if (['kr', 'jp1', 'sg2', 'tw2', 'vn2'].includes(lowerRegion)) {
-      return endpoints.riotAccount.asia;
-    }
-  } else if (service === 'match') {
-    if (['na1', 'br1', 'la1', 'la2', 'oc1'].includes(lowerRegion)) {
-      return endpoints.match.americas;
-    }
-    if (['euw1', 'eun1', 'tr1', 'ru', 'me1'].includes(lowerRegion)) {
-      return endpoints.match.europe;
-    }
-    if (['kr', 'jp1', 'sg2', 'tw2', 'vn2'].includes(lowerRegion)) {
-      return endpoints.match.asia;
+// Função auxiliar para corrigir a lane/role em partidas de desistência (remake)
+const getLaneAndRole = (participant) => {
+  // Prioriza o campo teamPosition, que é mais moderno e confiável
+  if (participant.teamPosition) {
+    switch (participant.teamPosition) {
+      case 'TOP':
+        return { lane: 'Top', role: 'Solo' };
+      case 'JUNGLE':
+        return { lane: 'Jungle', role: 'Jungle' };
+      case 'MIDDLE':
+        return { lane: 'Mid', role: 'Solo' };
+      case 'BOTTOM':
+        return { lane: 'Bottom', role: 'Carry' };
+      case 'UTILITY':
+        return { lane: 'Bottom', role: 'Support' };
+      default:
+        break; // Continua para o fallback se o valor for inesperado
     }
   }
-  return endpoints[service].americas;
+
+  // Fallback para dados mais antigos ou se teamPosition não existir.
+  // Trata o caso específico do bug de "NONE".
+  if (participant.lane === 'NONE') {
+    return { lane: 'Partida de desistência', role: '' };
+  }
+
+  // Fallback padrão para os dados originais, com capitalização para consistência
+  const capitalize = (s) => (s && typeof s === 'string' ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '');
+  return {
+    lane: capitalize(participant.lane),
+    role: capitalize(participant.role),
+  };
 };
 
-export const getAccountByRiotId = async (nome, tag, regiao = 'americas') => {
+export const getChampionStats = async (req, res) => {
   try {
-    const baseURL = getBaseUrl('riotAccount', regiao);
-    const res = await fetch(
-      `${baseURL}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(nome)}/${encodeURIComponent(tag)}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) throw new Error("Conta não encontrada");
-    return await res.json();
-  } catch (error) {
-    console.log('Erro ao buscar conta Riot:', error);
-    throw new Error('Erro ao buscar conta Riot.');
-  }
-};
+    const { nome, tag, champion } = req.query;
 
-/**
- * Busca os dados da conta do jogador pelo PUUID para obter a tag.
- */
-const getAccountByPuuid = async (puuid, regiao = 'americas') => {
-  try {
-    const baseURL = getBaseUrl('riotAccount', regiao);
-    const res = await fetch(
-      `${baseURL}/riot/account/v1/accounts/by-puuid/${puuid}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) {
-      console.error(`Não foi possível buscar a conta para o puuid: ${puuid}`);
-      return null;
-    }
-    return await res.json();
-  } catch (error) {
-    console.error('Erro em getAccountByPuuid:', error);
-    return null;
-  }
-};
+    // Otimização: busca dados da conta e dos campeões em paralelo
+    const [account, championsData] = await Promise.all([
+      riotService.getAccountByRiotId(nome, tag),
+      riotService.getChampionsData(),
+    ]);
 
-export const getChallenger = async (queue, regiao = 'americas') => {
-  try {
-    const baseURL = getBaseUrl('summoner', regiao);
-    const res = await fetch(
-      `${baseURL}/lol/league/v4/challengerleagues/by-queue/${queue}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) {
-      console.error(`Riot API respondeu com status ${res.status}:`, await res.text());
-      throw new Error("Erro ao buscar liga Challenger");
-    }
-    const data = await res.json();
+    const puuid = account.puuid;
+    const championData = Object.values(championsData.data).find(c => c.id.toLowerCase() === champion.toLowerCase());
+    if (!championData) return res.status(404).json({ message: "Campeão não encontrado." });
+    
+    const championId = championData.key;
+    const matchIds = await riotService.getMatchIds(puuid, null, 30);
 
-    const sortedPlayers = data.entries.sort((a, b) => b.leaguePoints - a.leaguePoints);
-    const top3Players = sortedPlayers.slice(0, 3);
-
-    const detailedPlayers = await Promise.all(
-      top3Players.map(async (player, index) => {
-        const account = await getAccountByPuuid(player.summonerId, regiao);
-        return {
-          position: index + 1,
-          name: account?.gameName || player.summonerName,
-          tag: account?.tagLine || '????',
-          leaguePoints: player.leaguePoints,
-          wins: player.wins,
-          losses: player.losses,
-          puuid: account?.puuid || ''
-        };
-      })
+    // Usa Promise.allSettled para não falhar se uma partida não for encontrada
+    const matchesResults = await Promise.allSettled(
+      matchIds.map(id => riotService.getMatchById(id))
     );
 
-    const top3 = detailedPlayers.map(player => ({
-      position: player.position,
-      name: player.name,
-      tag: player.tag,
-      leaguePoints: player.leaguePoints,
-      wins: player.wins,
-      losses: player.losses,
-      puuid: player.puuid,
-    }));
+    const stats = {
+      vitorias: 0,
+      total: 0,
+      totalKills: 0,
+      totalDeaths: 0,
+      totalAssists: 0,
+      totalCS: 0,
+      totalGameDuration: 0,
+      matches: [],
+    };
 
-    return top3;
+    for (const result of matchesResults) {
+      if (result.status === 'fulfilled' && result.value) {
+        const match = result.value;
+        const participant = match.info.participants.find(
+          p => p.puuid === puuid && p.championId.toString() === championId
+        );
+        if (participant) {
+          stats.total++;
+          if (participant.win) stats.vitorias++;
+          stats.totalKills += participant.kills;
+          stats.totalDeaths += participant.deaths;
+          stats.totalAssists += participant.assists;
+          stats.totalCS += participant.totalMinionsKilled + (participant.neutralMinionsKilled || 0);
+          stats.totalGameDuration += match.info.gameDuration;
+          
+          const { lane, role } = getLaneAndRole(participant);
+
+          stats.matches.push({
+            win: participant.win,
+            kills: participant.kills,
+            deaths: participant.deaths,
+            assists: participant.assists,
+            totalCS: participant.totalMinionsKilled + (participant.neutralMinionsKilled || 0),
+            gameDuration: match.info.gameDuration,
+            championId: participant.championId,
+            lane: lane,
+            role: role,
+            championName: participant.championName
+          });
+        }
+      }
+    }
+    
+    return res.status(200).json(stats);
   } catch (error) {
-    console.log('Erro ao buscar liga Challenger:', error);
-    throw new Error('Erro ao buscar liga Challenger.');
+    console.error('Erro ao buscar estatísticas do campeão:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar estatísticas do campeão." });
   }
 };
 
-export const getChampionMastery = async (puuid, regiao = 'americas') => {
+export const getProfile = async (req, res) => {
   try {
-    const baseURL = getBaseUrl('summoner', regiao);
-    const res = await fetch(
-      `${baseURL}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
+    const { puuid } = req.query;
+    const summonerData = await riotService.getSummonerByPuuid(puuid);
+    if (!summonerData) throw new Error("Invocador não encontrado");
+    const rankedData = await riotService.getRankedByPuuid(puuid);
+    
+    const ranks = processRankedData(rankedData);
+
+    const responseData = {
+      profileIconId: summonerData.profileIconId,
+      summonerLevel: summonerData.summonerLevel,
+      name: summonerData.name,
+      ranks,
+    };
+
+    return res.status(200).json(responseData);
+  } catch (error) {
+    console.error('Erro ao buscar perfil:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar perfil." });
+  }
+};
+
+export const getPuuid = async (req, res) => {
+  try {
+    const { nome, tag } = req.query;
+    const data = await riotService.getAccountByRiotId(nome, tag);
+    return res.status(200).json({ puuid: data.puuid });
+  } catch (error) {
+    console.error('Erro ao buscar PUUID:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar PUUID." });
+  }
+};
+
+export const getMaestria = async (req, res) => {
+  try {
+    const { nome, tag } = req.query;
+    const account = await riotService.getAccountByRiotId(nome, tag);
+    const puuid = account.puuid;
+
+    // Otimização: busca maestria e dados dos campeões em paralelo
+    const [masteryData, championsData] = await Promise.all([
+      riotService.getChampionMastery(puuid),
+      riotService.getChampionsData()
+    ]);
+
+    const championsMap = new Map(Object.values(championsData.data).map(c => [c.key, c]));
+    
+    const top10 = masteryData.slice(0, 10).map((m, i) => {
+      const champ = championsMap.get(m.championId.toString());
+      return {
+        posicao: i + 1,
+        nome: champ?.name || `Campeão ${m.championId}`,
+        championIcon: champ ? champ.id : m.championId,
+        championPoints: m.championPoints,
+      };
+    });
+
+    return res.status(200).json({ dados: top10 });
+  } catch (error) {
+    console.error('Erro ao buscar maestria:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar dados de maestria." });
+  }
+};
+
+export const getWinrate = async (req, res) => {
+  try {
+    const { nome, tag } = req.query;
+    const account = await riotService.getAccountByRiotId(nome, tag);
+    const puuid = account.puuid;
+    const matchIds = await riotService.getMatchIds(puuid, 420, 30);
+
+    let vitorias = 0, total = 0;
+    const results = await Promise.allSettled(
+      matchIds.map((id) => riotService.getMatchById(id))
     );
-    if (!res.ok) throw new Error("Erro ao buscar maestria");
-    return await res.json();
+
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value) {
+        const match = r.value;
+        const participant = match.info.participants.find((p) => p.puuid === puuid);
+        if (participant) {
+          total++;
+          if (participant.win) vitorias++;
+        }
+      }
+    }
+
+    const winrate = total > 0 ? ((vitorias / total) * 100).toFixed(2) : "0.00";
+    return res.status(200).json({ winrate: `${winrate}%`, vitorias, derrotas: total - vitorias, total });
   } catch (error) {
-    console.log('Erro ao buscar maestria:', error);
-    throw new Error('Erro ao buscar maestria.');
+    console.error('Erro ao buscar winrate:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar winrate." });
   }
 };
 
-export const getChampionsData = async () => {
+export const getChallengerTop3 = async (req, res) => {
   try {
-    const res = await fetch(
-      `https://ddragon.leagueoflegends.com/cdn/14.8.1/data/pt_BR/champion.json`
+    const queue = 'RANKED_SOLO_5x5';
+    // A função de serviço agora busca, ordena e formata o top 3
+    const top3Players = await riotService.getChallenger(queue);
+
+    return res.status(200).json(top3Players);
+  } catch (error) {
+    console.error('Erro ao buscar top 3 Challenger:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar o top 3 Challenger." });
+  }
+};
+
+export const getHistory = async (req, res) => {
+  try {
+    const { nome, tag } = req.query;
+    const account = await riotService.getAccountByRiotId(nome, tag);
+    const puuid = account.puuid;
+    // Busca os últimos 20 jogos (ajuste se quiser mais/menos)
+    const matchIds = await riotService.getMatchIds(puuid, null, 20);
+
+    // Busca detalhes das partidas
+    const matchesResults = await Promise.allSettled(
+      matchIds.map(id => riotService.getMatchById(id))
     );
-    if (!res.ok) throw new Error("Erro ao buscar campeões");
-    return await res.json();
+
+    // Monta um resumo simples de cada partida
+    const matches = [];
+    for (const result of matchesResults) {
+      if (result.status === 'fulfilled' && result.value) {
+        const match = result.value;
+        const participant = match.info.participants.find(p => p.puuid === puuid);
+        if (participant) {
+          matches.push({
+            matchId: match.metadata.matchId,
+            championName: participant.championName,
+            win: participant.win,
+            kills: participant.kills,
+            deaths: participant.deaths,
+            assists: participant.assists,
+            totalCS: participant.totalMinionsKilled + (participant.neutralMinionsKilled || 0),
+            gameDuration: match.info.gameDuration,
+            lane: participant.lane,
+            role: participant.role,
+            date: match.info.gameStartTimestamp
+          });
+        }
+      }
+    }
+
+    return res.status(200).json({ matches });
   } catch (error) {
-    console.log('Erro ao buscar dados dos campeões:', error);
-    throw new Error('Erro ao buscar dados dos campeões.');
+    console.error('Erro ao buscar histórico geral:', error.message);
+    return res.status(500).json({ message: "Erro ao buscar histórico geral." });
   }
 };
 
-export const getMatchIds = async (puuid, queue = 420, count = 30, regiao = 'americas') => {
+let championsCache = null;
+let lastFetch = 0;
+const CACHE_TTL = 1000 * 60 * 60; // 1 hora
+
+export const getChampionsList = async (req, res) => {
   try {
-    const baseURL = getBaseUrl('match', regiao);
-    const url = queue
-      ? `${baseURL}/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queue}&start=0&count=${count}`
-      : `${baseURL}/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}`;
-    const res = await fetch(url, { headers: { "X-Riot-Token": RIOT_API_KEY } });
-    if (!res.ok) throw new Error("Erro ao buscar partidas");
-    return await res.json();
-  } catch (error) {
-    console.log('Erro ao buscar partidas:', error);
-    throw new Error('Erro ao buscar partidas.');
+    const now = Date.now();
+    if (!championsCache || now - lastFetch > CACHE_TTL) {
+      const version = "14.12.1";
+      const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/pt_BR/champion.json`;
+      const response = await fetch(url);
+      const data = await response.json();
+      championsCache = Object.values(data.data);
+      lastFetch = now;
+    }
+    res.json(championsCache);
+  } catch (err) {
+    res.status(500).json({ message: "Erro ao buscar campeões." });
   }
 };
 
-export const getMatchById = async (matchId, regiao = 'americas') => {
+export const getChampionDetail = async (req, res) => {
   try {
-    const baseURL = getBaseUrl('match', regiao);
-    const res = await fetch(
-      `${baseURL}/lol/match/v5/matches/${matchId}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) throw new Error("Erro ao buscar partida");
-    return await res.json();
-  } catch (error) {
-    console.log('Erro ao buscar partida:', error);
-    throw new Error('Erro ao buscar partida.');
-  }
-};
-
-export const getSummonerByPuuid = async (puuid, regiao = 'americas') => {
-  try {
-    const baseURL = getBaseUrl('riotAccount', regiao);
-    const res = await fetch(
-      `${baseURL}/riot/account/v1/accounts/by-puuid/${puuid}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) throw new Error("Erro ao buscar invocador");
-    return await res.json();
-  } catch (error) {
-    console.log('Erro ao buscar invocador:', error);
-    throw new Error('Erro ao buscar invocador.');
-  }
-};
-
-export const getRankedByPuuid = async (puuid, regiao = 'americas') => {
-  try {
-    const baseURL = getBaseUrl('summoner', regiao);
-    const res = await fetch(
-      `${baseURL}/lol/league/v4/entries/by-puuid/${puuid}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (error) {
-    console.log('Erro ao buscar ranked:', error);
-    throw new Error('Erro ao buscar ranked.');
+    const version = "14.12.1";
+    const { id } = req.params;
+    const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/pt_BR/champion/${id}.json`;
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data.data[id]);
+  } catch (err) {
+    res.status(500).json({ message: "Erro ao buscar detalhes do campeão." });
   }
 };
