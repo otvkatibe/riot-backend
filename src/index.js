@@ -6,6 +6,7 @@ import userRoutes from './routes/user.route.js';
 import favoriteriotRoutes from './routes/favorite.riot.route.js';
 import db from './database/configdb.js';
 import { swaggerUi, swaggerSpec } from './swagger.js';
+import cacheRoutes from './routes/cache.route.js';
 
 dotenv.config();
 const app = express();
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use("/user", userRoutes);
 app.use("/riot", riotRoutes);
 app.use('/riot/favorites', favoriteriotRoutes);
+app.use('/cache', cacheRoutes);
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get('/', (req, res) => res.send('backend is running'));
