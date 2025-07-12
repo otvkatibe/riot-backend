@@ -71,7 +71,6 @@ const getBaseUrl = (service, region) => {
   return endpoints[service].americas;
 };
 
-// Exemplo de função modificada: getAccountByRiotId
 export const getAccountByRiotId = async (nome, tag, regiao = 'americas') => {
   try {
     const baseURL = getBaseUrl('riotAccount', regiao);
@@ -84,27 +83,6 @@ export const getAccountByRiotId = async (nome, tag, regiao = 'americas') => {
   } catch (error) {
     console.log('Erro ao buscar conta Riot:', error);
     throw new Error('Erro ao buscar conta Riot.');
-  }
-};
-
-/**
- * Busca os dados de um invocador pelo seu summonerId para obter o PUUID.
- */
-const getSummonerBySummonerId = async (summonerId, regiao = 'americas') => {
-  try {
-    const baseURL = getBaseUrl('summoner', regiao);
-    const res = await fetch(
-      `${baseURL}/lol/summoner/v4/summoners/${summonerId}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) {
-      console.error(`Não foi possível buscar o perfil para o summonerId: ${summonerId}`);
-      return null;
-    }
-    return await res.json();
-  } catch (error) {
-    console.error('Erro em getSummonerBySummonerId:', error);
-    return null;
   }
 };
 
@@ -147,14 +125,7 @@ export const getChallenger = async (queue, regiao = 'americas') => {
 
     const detailedPlayers = await Promise.all(
       top3Players.map(async (player, index) => {
-        let profile = null;
-        let account = null;
-        try {
-          profile = await getSummonerBySummonerId(player.summonerId, regiao);
-          account = profile ? await getAccountByPuuid(profile.puuid, regiao) : null;
-        } catch (error) {
-          console.error(error);
-        }
+        const account = await getAccountByPuuid(player.summonerId, regiao);
         return {
           position: index + 1,
           name: account?.gameName || player.summonerName,
@@ -162,7 +133,7 @@ export const getChallenger = async (queue, regiao = 'americas') => {
           leaguePoints: player.leaguePoints,
           wins: player.wins,
           losses: player.losses,
-          puuid: profile?.puuid || ''
+          puuid: account?.puuid || ''
         };
       })
     );
@@ -257,11 +228,11 @@ export const getSummonerByPuuid = async (puuid, regiao = 'americas') => {
   }
 };
 
-export const getRankedBySummonerId = async (summonerId, regiao = 'americas') => {
+export const getRankedByPuuid = async (puuid, regiao = 'americas') => {
   try {
     const baseURL = getBaseUrl('summoner', regiao);
     const res = await fetch(
-      `${baseURL}/lol/league/v4/entries/by-summoner/${summonerId}`,
+      `${baseURL}/lol/league/v4/entries/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) return [];

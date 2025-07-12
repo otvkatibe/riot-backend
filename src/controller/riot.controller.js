@@ -138,10 +138,9 @@ export const getChampionStats = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const { puuid } = req.query;
-
-    const summonerData = await riotService.getSummonerByPuuid(puuid);
-    const rankedData = await riotService.getRankedBySummonerId(summonerData.id);
-
+    const summonerData = await riotService.getAccountByRiotId(puuid);
+    const rankedData = await riotService.getRankedByPuuid(summonerData.puuid);
+    
     const ranks = processRankedData(rankedData);
 
     const responseData = {
@@ -296,7 +295,7 @@ export const getChampionsList = async (req, res) => {
   try {
     const now = Date.now();
     if (!championsCache || now - lastFetch > CACHE_TTL) {
-      const version = "14.12.1"; // Ou use process.env.DDRAGON_VERSION
+      const version = "14.12.1";
       const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/pt_BR/champion.json`;
       const response = await fetch(url);
       const data = await response.json();
