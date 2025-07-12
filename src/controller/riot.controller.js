@@ -144,9 +144,8 @@ export const getProfile = async (req, res) => {
     // Identifica a região correta a partir do puuid
     const regionFromPuuid = await riotService.getRegionByPuuid(puuid);
     
-    // Agora, passa a região identificada para obter as ranked
-    const rankedData = await riotService.getRankedBySummonerId(summonerData.id, regionFromPuuid);
 
+    const rankedData = await riotService.getRankedBySummonerId(summonerData.puuid, regionFromPuuid);
     const ranks = processRankedData(rankedData);
 
     const responseData = {
