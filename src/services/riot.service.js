@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import { getCachedData, setCachedData } from './cache.service.js';
 
 const RIOT_API_KEY = process.env.RIOT_API_KEY;
 
@@ -202,18 +203,47 @@ export const getChampionMastery = async (puuid, regiao = 'na1') => {
   }
 };
 
-export const getChampionsData = async () => {
+// Função auxiliar para cache manual em serviços
+const withCache = async (key, cacheType, fetchFunction) => {
   try {
-    const res = await fetch(
-      `https://ddragon.leagueoflegends.com/cdn/14.8.1/data/pt_BR/champion.json`
-    );
-    if (!res.ok) throw new Error("Erro ao buscar campeões");
-    return await res.json();
+    // Tenta buscar no cache primeiro
+    const cached = await getCachedData(key, cacheType);
+    if (cached) {
+      console.log(`🎯 Service Cache HIT: ${key}`);
+      return cached;
+    }
+    
+    console.log(`❌ Service Cache MISS: ${key}`);
+    
+    // Executa a função e salva no cache
+    const result = await fetchFunction();
+    await setCachedData(key, result, cacheType);
+    
+    return result;
   } catch (error) {
-    console.log('Erro ao buscar dados dos campeões:', error);
-    throw new Error('Erro ao buscar dados dos campeões.');
+    console.log(`Erro no cache do serviço para ${key}:`, error);
+    // Se der erro no cache, executa a função normalmente
+    return await fetchFunction();
   }
 };
+
+// Exemplo de uso em funções específicas
+export const getChampionsDataCached = async () => {
+  return await withCache(
+    'champions:all',
+    'champions',
+    async () => {
+      const res = await fetch(
+        `https://ddragon.leagueoflegends.com/cdn/14.8.1/data/pt_BR/champion.json`
+      );
+      if (!res.ok) throw new Error("Erro ao buscar campeões");
+      return await res.json();
+    }
+  );
+};
+
+// Atualizar função existente para usar cache
+export const getChampionsData = getChampionsDataCached;
 
 export const getMatchIds = async (puuid, queue = 420, count = 30, regiao = 'na1') => {
   try {

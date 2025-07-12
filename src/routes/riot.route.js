@@ -1,6 +1,7 @@
 import express from 'express';
 import { getMaestria, getWinrate, getChampionStats, getProfile, getPuuid, getChallengerTop3, getHistory, getChampionsList, getChampionDetail } from '../controller/riot.controller.js';
 import { validateNomeTagChampion, validatePuuid, validateNomeTag } from '../middlewares/riot.validation.js';
+import { cacheMiddleware, longCacheMiddleware } from '../middlewares/cache.middleware.js';
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ const router = express.Router();
  *       200:
  *         description: Lista de maestrias
  */
-router.get('/maestria', validateNomeTag, getMaestria);
+router.get('/maestria', validateNomeTag, cacheMiddleware('maestria'), getMaestria);
 
 /**
  * @swagger
@@ -48,7 +49,7 @@ router.get('/maestria', validateNomeTag, getMaestria);
  *       200:
  *         description: Winrate do jogador
  */
-router.get('/winrate', validateNomeTag, getWinrate);
+router.get('/winrate', validateNomeTag, cacheMiddleware('winrate'), getWinrate);
 
 /**
  * @swagger
@@ -76,7 +77,7 @@ router.get('/winrate', validateNomeTag, getWinrate);
  *       200:
  *         description: Estatísticas do campeão
  */
-router.get('/champion-stats', validateNomeTagChampion, getChampionStats);
+router.get('/champion-stats', validateNomeTagChampion, cacheMiddleware('champion-stats'), getChampionStats);
 
 /**
  * @swagger
@@ -94,7 +95,7 @@ router.get('/champion-stats', validateNomeTagChampion, getChampionStats);
  *       200:
  *         description: Perfil do jogador
  */
-router.get('/profile', validatePuuid, getProfile);
+router.get('/profile', validatePuuid, cacheMiddleware('profile'), getProfile);
 
 /**
  * @swagger
@@ -117,7 +118,7 @@ router.get('/profile', validatePuuid, getProfile);
  *       200:
  *         description: PUUID do jogador
  */
-router.get('/puuid', validateNomeTag, getPuuid);
+router.get('/puuid', validateNomeTag, cacheMiddleware('puuid'), getPuuid);
 
 /**
  * @swagger
@@ -152,7 +153,7 @@ router.get('/puuid', validateNomeTag, getPuuid);
  *       500:
  *         description: Erro interno do servidor
  */
-router.get('/challenger-top3', getChallengerTop3);
+router.get('/challenger-top3', longCacheMiddleware('challenger', 30), getChallengerTop3);
 
 /**
  * @swagger
@@ -175,7 +176,7 @@ router.get('/challenger-top3', getChallengerTop3);
  *       200:
  *         description: Histórico geral do jogador
  */
-router.get('/history', validateNomeTag, getHistory);
+router.get('/history', validateNomeTag, cacheMiddleware('matches'), getHistory);
 
 /**
  * @swagger
@@ -187,7 +188,7 @@ router.get('/history', validateNomeTag, getHistory);
  *       200:
  *         description: Lista de campeões
  */
-router.get('/champions', getChampionsList);
+router.get('/champions', longCacheMiddleware('champions', 1440), getChampionsList);
 
 /**
  * @swagger
@@ -205,6 +206,6 @@ router.get('/champions', getChampionsList);
  *       200:
  *         description: Detalhes do campeão
  */
-router.get('/champions/:id', getChampionDetail);
+router.get('/champions/:id', longCacheMiddleware('champions', 1440), getChampionDetail);
 
 export default router;
