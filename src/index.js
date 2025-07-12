@@ -78,7 +78,7 @@ app.get('/', (req, res) => {
     message: 'Riot Backend API está funcionando!',
     documentation: '/docs',
     health: '/health',
-    version: '1.0.0'
+    version: process.env.npm_package_version || '1.0.0'
   });
 });
 
