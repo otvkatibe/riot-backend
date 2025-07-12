@@ -138,9 +138,14 @@ export const getChampionStats = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const { puuid } = req.query;
-
+    
+    // Obtém os dados do invocador usando o puuid
     const summonerData = await riotService.getSummonerByPuuid(puuid);
-    const rankedData = await riotService.getRankedBySummonerId(summonerData.id);
+    // Identifica a região correta a partir do puuid
+    const regionFromPuuid = await riotService.getRegionByPuuid(puuid);
+    
+    // Agora, passa a região identificada para obter as ranked
+    const rankedData = await riotService.getRankedBySummonerId(summonerData.id, regionFromPuuid);
 
     const ranks = processRankedData(rankedData);
 
