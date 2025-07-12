@@ -1,4 +1,5 @@
 import * as riotService from '../services/riot.service.js';
+import fetch from 'node-fetch';
 
 // Função auxiliar para processar dados de ranqueadas de forma mais limpa
 const processRankedData = (rankedData) => {
@@ -137,10 +138,14 @@ export const getChampionStats = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const { puuid } = req.query;
-
+    
+    // Obtém os dados do invocador usando o puuid
     const summonerData = await riotService.getSummonerByPuuid(puuid);
-    const rankedData = await riotService.getRankedBySummonerId(summonerData.id);
+    // Identifica a região correta a partir do puuid
+    const regionFromPuuid = await riotService.getRegionByPuuid(puuid);
+    
 
+    const rankedData = await riotService.getRankedBySummonerId(summonerData.puuid, regionFromPuuid);
     const ranks = processRankedData(rankedData);
 
     const responseData = {
@@ -284,5 +289,39 @@ export const getHistory = async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar histórico geral:', error.message);
     return res.status(500).json({ message: "Erro ao buscar histórico geral." });
+  }
+};
+
+let championsCache = null;
+let lastFetch = 0;
+const CACHE_TTL = 1000 * 60 * 60; // 1 hora
+
+export const getChampionsList = async (req, res) => {
+  try {
+    const now = Date.now();
+    if (!championsCache || now - lastFetch > CACHE_TTL) {
+      const version = "14.12.1"; // Ou use process.env.DDRAGON_VERSION
+      const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/pt_BR/champion.json`;
+      const response = await fetch(url);
+      const data = await response.json();
+      championsCache = Object.values(data.data);
+      lastFetch = now;
+    }
+    res.json(championsCache);
+  } catch (err) {
+    res.status(500).json({ message: "Erro ao buscar campeões." });
+  }
+};
+
+export const getChampionDetail = async (req, res) => {
+  try {
+    const version = "14.12.1";
+    const { id } = req.params;
+    const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/pt_BR/champion/${id}.json`;
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data.data[id]);
+  } catch (err) {
+    res.status(500).json({ message: "Erro ao buscar detalhes do campeão." });
   }
 };

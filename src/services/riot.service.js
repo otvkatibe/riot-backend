@@ -1,11 +1,93 @@
 import fetch from 'node-fetch';
+import { getCachedData, setCachedData } from './cache.service.js';
 
 const RIOT_API_KEY = process.env.RIOT_API_KEY;
 
-export const getAccountByRiotId = async (nome, tag) => {
+// Mapeamento dos endpoints por serviço e região/cluster
+const endpoints = {
+  riotAccount: {
+    americas: 'https://americas.api.riotgames.com',
+    europe: 'https://europe.api.riotgames.com',
+    asia: 'https://asia.api.riotgames.com'
+  },
+  summoner: {
+    na1: 'https://na1.api.riotgames.com',
+    br1: 'https://br1.api.riotgames.com',
+    euw1: 'https://euw1.api.riotgames.com',
+    kr: 'https://kr.api.riotgames.com'
+  },
+  match: {
+    americas: 'https://americas.api.riotgames.com',
+    europe: 'https://europe.api.riotgames.com',
+    asia: 'https://asia.api.riotgames.com'
+  }
+};
+
+/**
+ * Função auxiliar que recebe o nome do serviço e o código da região e retorna a URL base.
+ * Para:
+ * - riotAccount e match: região é transformada em cluster conforme:
+ *     Cluster Americano: na1, br1, la1, la2, oc1
+ *     Cluster Europeu: euw1, eun1, tr1, ru, me1
+ *     Cluster Asiático: kr, jp1, sg2, tw2, vn2
+ * - summoner: utiliza os códigos específicos (na1, br1, euw1 e kr). Caso não seja um desses,
+ *   tenta agrupar conforme os clusters.
+ */
+const getBaseUrl = (service, regiao) => {
+  const lowerRegiao = regiao.toLowerCase();
+  if (service === 'riotAccount' || service === 'match') {
+    if (['na1', 'br1', 'la1', 'la2', 'oc1'].includes(lowerRegiao)) {
+      return endpoints[service].americas;
+    }
+    if (['euw1', 'eun1', 'tr1', 'ru', 'me1'].includes(lowerRegiao)) {
+      return endpoints[service].europe;
+    }
+    if (['kr', 'jp1', 'sg2', 'tw2', 'vn2'].includes(lowerRegiao)) {
+      return endpoints[service].asia;
+    }
+  } else if (service === 'summoner') {
+    if (endpoints.summoner[lowerRegiao]) {
+      return endpoints.summoner[lowerRegiao];
+    }
+    // fallback: agrupa conforme clusters
+    if (['na1', 'br1', 'la1', 'la2', 'oc1'].includes(lowerRegiao)) {
+      return endpoints.riotAccount.americas;
+    }
+    if (['euw1', 'eun1', 'tr1', 'ru', 'me1'].includes(lowerRegiao)) {
+      return endpoints.riotAccount.europe;
+    }
+    if (['kr', 'jp1', 'sg2', 'tw2', 'vn2'].includes(lowerRegiao)) {
+      return endpoints.riotAccount.asia;
+    }
+  }
+  // Caso não se encaixe, retorna default (americas)
+  return endpoints[service].americas;
+};
+
+/**
+ * Nova função auxiliar que, a partir do puuid, chama a rota:
+ * /riot/account/v1/region/by-game/lol/by-puuid/{puuid}
+ * para identificar a região associada.
+ */
+export const getRegionByPuuid = async (puuid) => {
+  // Utiliza o endpoint das contas (a partir de um cluster fixo – americas como padrão)
+  const url = `${endpoints.riotAccount.americas}/riot/account/v1/region/by-game/lol/by-puuid/${puuid}`;
+  const res = await fetch(url, { headers: { "X-Riot-Token": RIOT_API_KEY } });
+  if (!res.ok) {
+    throw new Error("Erro ao identificar região pelo PUUID");
+  }
+  const data = await res.json();
+  // Presume que o retorno contenha a propriedade "region"
+  return data.region;
+};
+
+
+// Exemplo: getAccountByRiotId utiliza o endpoint de conta (riotAccount), que se baseia em clusters
+export const getAccountByRiotId = async (nome, tag, regiao = 'na1') => {
   try {
+    const baseURL = getBaseUrl('riotAccount', regiao);
     const res = await fetch(
-      `https://americas.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(nome)}/${encodeURIComponent(tag)}`,
+      `${baseURL}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(nome)}/${encodeURIComponent(tag)}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) throw new Error("Conta não encontrada");
@@ -17,36 +99,16 @@ export const getAccountByRiotId = async (nome, tag) => {
 };
 
 /**
- * Busca os dados de um invocador pelo seu summonerId para obter o PUUID.
- * @param {string} summonerId - O ID do invocador.
- * @returns {Promise<object|null>} O perfil do invocador ou null se falhar.
+ * Busca os dados da conta do jogador pelo PUUID para obter a tag.
+ * Utiliza o endpoint de contas, baseado em clusters.
  */
-const getSummonerBySummonerId = async (summonerId) => {
+const getAccountByPuuid = async (puuid, regiao = 'na1') => {
   try {
+    // Se o puuid for fornecido, substitui o regiao pelo determinado pela rota de region
+    const regionFromPuuid = await getRegionByPuuid(puuid);
+    const baseURL = getBaseUrl('riotAccount', regionFromPuuid);
     const res = await fetch(
-      `https://br1.api.riotgames.com/lol/summoner/v4/summoners/${summonerId}`,
-      { headers: { "X-Riot-Token": RIOT_API_KEY } }
-    );
-    if (!res.ok) {
-      console.error(`Não foi possível buscar o perfil para o summonerId: ${summonerId}`);
-      return null;
-    }
-    return await res.json();
-  } catch (error) {
-    console.error('Erro em getSummonerBySummonerId:', error);
-    return null;
-  }
-};
-
-/**
- * Busca os dados da conta de um jogador pelo seu PUUID para obter a tag.
- * @param {string} puuid - O PUUID do jogador.
- * @returns {Promise<object|null>} Os dados da conta ou null se falhar.
- */
-const getAccountByPuuid = async (puuid) => {
-  try {
-    const res = await fetch(
-      `https://americas.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
+      `${baseURL}/riot/account/v1/accounts/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) {
@@ -60,10 +122,12 @@ const getAccountByPuuid = async (puuid) => {
   }
 };
 
-export const getChallenger = async (queue) => {
+export const getChallenger = async (queue, regiao = 'br1') => {
   try {
+    // Para buscar o challenger, usamos o endpoint de summoner com a região informada
+    const baseURLSummoner = getBaseUrl('summoner', regiao);
     const res = await fetch(
-      `https://br1.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/${queue}`,
+      `${baseURLSummoner}/lol/league/v4/challengerleagues/by-queue/${queue}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) {
@@ -72,31 +136,45 @@ export const getChallenger = async (queue) => {
     }
     const data = await res.json();
 
-    // Ordena os jogadores por pontos de liga e pega o top 3
+    // Ordena os jogadores por pontos de liga e pega os top 3
     const sortedPlayers = data.entries.sort((a, b) => b.leaguePoints - a.leaguePoints);
     const top3Players = sortedPlayers.slice(0, 3);
 
-    // Busca os detalhes de cada jogador do top 3
     const detailedPlayers = await Promise.all(
       top3Players.map(async (player, index) => {
-        let profile = null;
-        let account = null;
-        try {
-          profile = await getSummonerBySummonerId(player.summonerId);
-          account = profile ? await getAccountByPuuid(profile.puuid) : null;
-        } catch (e) {
-          // Se der erro, ignora e usa os dados do player
-        }
+        let puuid = player.puuid || '';
+        let name = '';
+        let tag = '????';
 
+        try {
+          // Se o puuid estiver disponível, identifica automaticamente a região
+          if (puuid) {
+            const regionFromPuuid = await getRegionByPuuid(puuid);
+            // Usa o endpoint por puuid para obter nome atualizado
+            const baseURLSummonerDynamic = getBaseUrl('summoner', regionFromPuuid);
+            const summonerByPuuidRes = await fetch(
+              `${baseURLSummonerDynamic}/lol/summoner/v4/summoners/by-puuid/${puuid}`,
+              { headers: { "X-Riot-Token": RIOT_API_KEY } }
+            );
+            if (summonerByPuuidRes.ok) {
+              const summonerByPuuidData = await summonerByPuuidRes.json();
+              name = summonerByPuuidData.name;
+            }
+            // Busca a tag da conta utilizando o puuid e a região identificada
+            const accountData = await getAccountByPuuid(puuid, regionFromPuuid);
+            if (accountData && accountData.tagLine) {
+              tag = accountData.tagLine;
+            }
+          }
+        } catch (e) {
+          console.error('Erro ao buscar dados complementares:', e);
+        }
         return {
           position: index + 1,
-          // Sempre retorna o nome do player, mesmo se falhar a busca do perfil
-          name: account?.gameName || player.summonerName,
-          tag: account?.tagLine || '????',
+          name,
+          tag,
           leaguePoints: player.leaguePoints,
-          wins: player.wins,
-          losses: player.losses,
-          puuid: profile?.puuid || '',
+          puuid,
         };
       })
     );
@@ -108,10 +186,13 @@ export const getChallenger = async (queue) => {
   }
 };
 
-export const getChampionMastery = async (puuid) => {
+export const getChampionMastery = async (puuid, regiao = 'na1') => {
   try {
+    // Determina a região a partir do puuid
+    const regionFromPuuid = await getRegionByPuuid(puuid);
+    const baseURL = getBaseUrl('summoner', regionFromPuuid);
     const res = await fetch(
-      `https://br1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`,
+      `${baseURL}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) throw new Error("Erro ao buscar maestria");
@@ -122,24 +203,56 @@ export const getChampionMastery = async (puuid) => {
   }
 };
 
-export const getChampionsData = async () => {
+// Função auxiliar para cache manual em serviços
+const withCache = async (key, cacheType, fetchFunction) => {
   try {
-    const res = await fetch(
-      `https://ddragon.leagueoflegends.com/cdn/14.8.1/data/pt_BR/champion.json`
-    );
-    if (!res.ok) throw new Error("Erro ao buscar campeões");
-    return await res.json();
+    // Tenta buscar no cache primeiro
+    const cached = await getCachedData(key, cacheType);
+    if (cached) {
+      console.log(`🎯 Service Cache HIT: ${key}`);
+      return cached;
+    }
+    
+    console.log(`❌ Service Cache MISS: ${key}`);
+    
+    // Executa a função e salva no cache
+    const result = await fetchFunction();
+    await setCachedData(key, result, cacheType);
+    
+    return result;
   } catch (error) {
-    console.log('Erro ao buscar dados dos campeões:', error);
-    throw new Error('Erro ao buscar dados dos campeões.');
+    console.log(`Erro no cache do serviço para ${key}:`, error);
+    // Se der erro no cache, executa a função normalmente
+    return await fetchFunction();
   }
 };
 
-export const getMatchIds = async (puuid, queue = 420, count = 30) => {
+// Exemplo de uso em funções específicas
+export const getChampionsDataCached = async () => {
+  return await withCache(
+    'champions:all',
+    'champions',
+    async () => {
+      const res = await fetch(
+        `https://ddragon.leagueoflegends.com/cdn/14.8.1/data/pt_BR/champion.json`
+      );
+      if (!res.ok) throw new Error("Erro ao buscar campeões");
+      return await res.json();
+    }
+  );
+};
+
+// Atualizar função existente para usar cache
+export const getChampionsData = getChampionsDataCached;
+
+export const getMatchIds = async (puuid, queue = 420, count = 30, regiao = 'na1') => {
   try {
+    // Identifica a região automaticamente a partir do puuid
+    const regionFromPuuid = await getRegionByPuuid(puuid);
+    const baseURL = getBaseUrl('match', regionFromPuuid);
     const url = queue
-      ? `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queue}&start=0&count=${count}`
-      : `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}`;
+      ? `${baseURL}/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queue}&start=0&count=${count}`
+      : `${baseURL}/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}`;
     const res = await fetch(url, { headers: { "X-Riot-Token": RIOT_API_KEY } });
     if (!res.ok) throw new Error("Erro ao buscar partidas");
     return await res.json();
@@ -149,10 +262,12 @@ export const getMatchIds = async (puuid, queue = 420, count = 30) => {
   }
 };
 
-export const getMatchById = async (matchId) => {
+export const getMatchById = async (matchId, regiao = 'na1') => {
   try {
+    // Para partidas, utiliza o valor fornecido ou padrão (não dependente do puuid)
+    const baseURL = getBaseUrl('match', regiao);
     const res = await fetch(
-      `https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}`,
+      `${baseURL}/lol/match/v5/matches/${matchId}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) throw new Error("Erro ao buscar partida");
@@ -163,10 +278,13 @@ export const getMatchById = async (matchId) => {
   }
 };
 
-export const getSummonerByPuuid = async (puuid) => {
+export const getSummonerByPuuid = async (puuid, regiao = 'na1') => {
   try {
+    // Determina a região automaticamente a partir do puuid
+    const regionFromPuuid = await getRegionByPuuid(puuid);
+    const baseURL = getBaseUrl('summoner', regionFromPuuid);
     const res = await fetch(
-      `https://br1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`,
+      `${baseURL}/lol/summoner/v4/summoners/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) throw new Error("Erro ao buscar invocador");
@@ -177,10 +295,15 @@ export const getSummonerByPuuid = async (puuid) => {
   }
 };
 
-export const getRankedBySummonerId = async (summonerId) => {
+/**
+ * Busca as posições (ranked) do invocador pelo summonerId, utilizando o endpoint de summoner.
+ * Aqui o parâmetro regiao deve ser um código de plataforma (ex.: "br1", "na1", "euw1", "kr")
+ */
+export const getRankedBySummonerId = async (puuid, regiao = 'br1') => {
   try {
+    const baseURL = getBaseUrl('summoner', regiao);
     const res = await fetch(
-      `https://br1.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`,
+      `${baseURL}/lol/league/v4/entries/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) return [];

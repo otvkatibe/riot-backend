@@ -1,6 +1,7 @@
 import express from 'express';
 import verifyToken from '../middlewares/jwt.token.middleware.js';
 import * as favoriteController from '../controller/favorite.controller.js';
+import { cacheMiddleware } from '../middlewares/cache.middleware.js';
 
 const router = express.Router();
 router.use(verifyToken);
@@ -47,7 +48,7 @@ router.post('/', favoriteController.createFavorite);
  *       200:
  *         description: Lista de favoritos
  */
-router.get('/', favoriteController.getFavorites);
+router.get('/', cacheMiddleware('favorites'), favoriteController.getFavorites);
 
 /**
  * @swagger
