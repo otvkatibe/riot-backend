@@ -63,6 +63,23 @@ const getBaseUrl = (service, regiao) => {
   return endpoints[service].americas;
 };
 
+/**
+ * Nova função auxiliar que, a partir do puuid, chama a rota:
+ * /riot/account/v1/region/by-game/lol/by-puuid/{puuid}
+ * para identificar a região associada.
+ */
+const getRegionByPuuid = async (puuid) => {
+  // Utiliza o endpoint das contas (a partir de um cluster fixo – americas como padrão)
+  const url = `${endpoints.riotAccount.americas}/riot/account/v1/region/by-game/lol/by-puuid/${puuid}`;
+  const res = await fetch(url, { headers: { "X-Riot-Token": RIOT_API_KEY } });
+  if (!res.ok) {
+    throw new Error("Erro ao identificar região pelo PUUID");
+  }
+  const data = await res.json();
+  // Presume que o retorno contenha a propriedade "region"
+  return data.region;
+};
+
 // Exemplo: getAccountByRiotId utiliza o endpoint de conta (riotAccount), que se baseia em clusters
 export const getAccountByRiotId = async (nome, tag, regiao = 'na1') => {
   try {
@@ -80,14 +97,14 @@ export const getAccountByRiotId = async (nome, tag, regiao = 'na1') => {
 };
 
 /**
-
-/**
  * Busca os dados da conta do jogador pelo PUUID para obter a tag.
  * Utiliza o endpoint de contas, baseado em clusters.
  */
 const getAccountByPuuid = async (puuid, regiao = 'na1') => {
   try {
-    const baseURL = getBaseUrl('riotAccount', regiao);
+    // Se o puuid for fornecido, substitui o regiao pelo determinado pela rota de region
+    const regionFromPuuid = await getRegionByPuuid(puuid);
+    const baseURL = getBaseUrl('riotAccount', regionFromPuuid);
     const res = await fetch(
       `${baseURL}/riot/account/v1/accounts/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
@@ -105,6 +122,7 @@ const getAccountByPuuid = async (puuid, regiao = 'na1') => {
 
 export const getChallenger = async (queue, regiao = 'br1') => {
   try {
+    // Para buscar o challenger, usamos o endpoint de summoner com a região informada
     const baseURLSummoner = getBaseUrl('summoner', regiao);
     const res = await fetch(
       `${baseURLSummoner}/lol/league/v4/challengerleagues/by-queue/${queue}`,
@@ -120,25 +138,28 @@ export const getChallenger = async (queue, regiao = 'br1') => {
     const sortedPlayers = data.entries.sort((a, b) => b.leaguePoints - a.leaguePoints);
     const top3Players = sortedPlayers.slice(0, 3);
 
-    // Para cada jogador, usamos o puuid diretamente e buscamos dados adicionais pela rota by-puuid
     const detailedPlayers = await Promise.all(
       top3Players.map(async (player, index) => {
-        let puuid = player.puuid || ''; // usa o puuid direto do objeto, se disponível
+        let puuid = player.puuid || '';
         let name = '';
         let tag = '????';
 
         try {
+          // Se o puuid estiver disponível, identifica automaticamente a região
           if (puuid) {
+            const regionFromPuuid = await getRegionByPuuid(puuid);
+            // Usa o endpoint por puuid para obter nome atualizado
+            const baseURLSummonerDynamic = getBaseUrl('summoner', regionFromPuuid);
             const summonerByPuuidRes = await fetch(
-              `${baseURLSummoner}/lol/summoner/v4/summoners/by-puuid/${puuid}`,
+              `${baseURLSummonerDynamic}/lol/summoner/v4/summoners/by-puuid/${puuid}`,
               { headers: { "X-Riot-Token": RIOT_API_KEY } }
             );
             if (summonerByPuuidRes.ok) {
               const summonerByPuuidData = await summonerByPuuidRes.json();
               name = summonerByPuuidData.name;
             }
-            // Busca a tag da conta utilizando o puuid
-            const accountData = await getAccountByPuuid(puuid, regiao);
+            // Busca a tag da conta utilizando o puuid e a região identificada
+            const accountData = await getAccountByPuuid(puuid, regionFromPuuid);
             if (accountData && accountData.tagLine) {
               tag = accountData.tagLine;
             }
@@ -163,9 +184,11 @@ export const getChallenger = async (queue, regiao = 'br1') => {
   }
 };
 
-export const getChampionMastery = async (puuid, regiao = 'br1') => {
+export const getChampionMastery = async (puuid, regiao = 'na1') => {
   try {
-    const baseURL = getBaseUrl('summoner', regiao);
+    // Determina a região a partir do puuid
+    const regionFromPuuid = await getRegionByPuuid(puuid);
+    const baseURL = getBaseUrl('summoner', regionFromPuuid);
     const res = await fetch(
       `${baseURL}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
@@ -193,7 +216,9 @@ export const getChampionsData = async () => {
 
 export const getMatchIds = async (puuid, queue = 420, count = 30, regiao = 'na1') => {
   try {
-    const baseURL = getBaseUrl('match', regiao);
+    // Identifica a região automaticamente a partir do puuid
+    const regionFromPuuid = await getRegionByPuuid(puuid);
+    const baseURL = getBaseUrl('match', regionFromPuuid);
     const url = queue
       ? `${baseURL}/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queue}&start=0&count=${count}`
       : `${baseURL}/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}`;
@@ -208,6 +233,7 @@ export const getMatchIds = async (puuid, queue = 420, count = 30, regiao = 'na1'
 
 export const getMatchById = async (matchId, regiao = 'na1') => {
   try {
+    // Para partidas, utiliza o valor fornecido ou padrão (não dependente do puuid)
     const baseURL = getBaseUrl('match', regiao);
     const res = await fetch(
       `${baseURL}/lol/match/v5/matches/${matchId}`,
@@ -223,7 +249,9 @@ export const getMatchById = async (matchId, regiao = 'na1') => {
 
 export const getSummonerByPuuid = async (puuid, regiao = 'na1') => {
   try {
-    const baseURL = getBaseUrl('summoner', regiao);
+    // Determina a região automaticamente a partir do puuid
+    const regionFromPuuid = await getRegionByPuuid(puuid);
+    const baseURL = getBaseUrl('summoner', regionFromPuuid);
     const res = await fetch(
       `${baseURL}/lol/summoner/v4/summoners/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
