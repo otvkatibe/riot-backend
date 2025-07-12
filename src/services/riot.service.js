@@ -223,10 +223,9 @@ export const getMatchById = async (matchId, regiao = 'na1') => {
 
 export const getSummonerByPuuid = async (puuid, regiao = 'na1') => {
   try {
-    // Para buscar invocador por PUUID, utilizamos o endpoint de conta (riotAccount)
-    const baseURL = getBaseUrl('riotAccount', regiao);
+    const baseURL = getBaseUrl('summoner', regiao);
     const res = await fetch(
-      `${baseURL}/riot/account/v1/accounts/by-puuid/${puuid}`,
+      `${baseURL}/lol/summoner/v4/summoners/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) throw new Error("Erro ao buscar invocador");
