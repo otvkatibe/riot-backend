@@ -269,11 +269,11 @@ export const getSummonerByPuuid = async (puuid, regiao = 'na1') => {
  * Busca as posições (ranked) do invocador pelo summonerId, utilizando o endpoint de summoner.
  * Aqui o parâmetro regiao deve ser um código de plataforma (ex.: "br1", "na1", "euw1", "kr")
  */
-export const getRankedBySummonerId = async (summonerId, regiao = 'br1') => {
+export const getRankedBySummonerId = async (puuid, regiao = 'br1') => {
   try {
     const baseURL = getBaseUrl('summoner', regiao);
     const res = await fetch(
-      `${baseURL}/lol/league/v4/entries/by-summoner/${summonerId}`,
+      `${baseURL}/lol/league/v4/entries/by-puuid/${puuid}`,
       { headers: { "X-Riot-Token": RIOT_API_KEY } }
     );
     if (!res.ok) return [];
