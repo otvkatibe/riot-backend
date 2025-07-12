@@ -68,7 +68,7 @@ const getBaseUrl = (service, regiao) => {
  * /riot/account/v1/region/by-game/lol/by-puuid/{puuid}
  * para identificar a região associada.
  */
-const getRegionByPuuid = async (puuid) => {
+export const getRegionByPuuid = async (puuid) => {
   // Utiliza o endpoint das contas (a partir de um cluster fixo – americas como padrão)
   const url = `${endpoints.riotAccount.americas}/riot/account/v1/region/by-game/lol/by-puuid/${puuid}`;
   const res = await fetch(url, { headers: { "X-Riot-Token": RIOT_API_KEY } });
@@ -79,6 +79,7 @@ const getRegionByPuuid = async (puuid) => {
   // Presume que o retorno contenha a propriedade "region"
   return data.region;
 };
+
 
 // Exemplo: getAccountByRiotId utiliza o endpoint de conta (riotAccount), que se baseia em clusters
 export const getAccountByRiotId = async (nome, tag, regiao = 'na1') => {
