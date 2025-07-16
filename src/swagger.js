@@ -11,8 +11,12 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Servidor de desenvolvimento',
+        url: process.env.NODE_ENV === 'production' 
+          ? 'https://riot-backend.vercel.app' 
+          : 'http://localhost:3000',
+        description: process.env.NODE_ENV === 'production' 
+          ? 'Servidor de produção' 
+          : 'Servidor de desenvolvimento',
       },
     ],
     components: {
@@ -140,6 +144,10 @@ const options = {
               type: 'string',
               description: 'Mensagem de erro',
             },
+            error: {
+              type: 'string',
+              description: 'Detalhes do erro',
+            },
           },
         },
       },
@@ -157,11 +165,37 @@ const options = {
         name: 'Favoritos',
         description: 'Sistema de favoritos do usuário',
       },
+      {
+        name: 'Cache',
+        description: 'Operações de cache',
+      },
+      {
+        name: 'Tips',
+        description: 'Sistema de dicas',
+      },
     ],
   },
-  apis: ['./src/routes/*.js'], // Caminho para os arquivos de rotas
+  apis: ['./src/routes/*.js'],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
 
-export { swaggerUi, swaggerSpec };
+// Configurações customizadas para o Swagger UI
+const swaggerOptions = {
+  customCssUrl: 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.css',
+  customJs: [
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js'
+  ],
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    docExpansion: 'none',
+    filter: true,
+    showRequestHeaders: true,
+    showCommonExtensions: true,
+    tryItOutEnabled: true,
+  },
+};
+
+export { swaggerUi, swaggerSpec, swaggerOptions };
